@@ -12,6 +12,7 @@ import traceback
 import asyncio
 import base64
 import io
+import concurrent.futures
 from typing import Optional
 
 # Set up logging
@@ -20,6 +21,23 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def run_async_in_sync(coro):
+    """Run async function in sync context, handling existing event loops."""
+    try:
+        # Check if we're already in an event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Run in thread pool to avoid nested event loop
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, coro)
+                return future.result()
+        else:
+            return asyncio.run(coro)
+    except RuntimeError:
+        # No event loop exists, create one
+        return asyncio.run(coro)
 
 
 class ImageProcessor:
@@ -280,8 +298,8 @@ def handler(job):
         if model_manager is None:
             logger.info("Initializing Qwen-Image model manager...")
             model_manager = QwenImageManager()
-            # Run async initialization in sync context
-            asyncio.run(model_manager.initialize())
+            # Run async initialization in sync context with proper event loop handling
+            run_async_in_sync(model_manager.initialize())
             logger.info("Model manager initialized successfully")
         
         job_input = job.get("input", {})
@@ -291,7 +309,7 @@ def handler(job):
         
         if task_type == "health":
             # Get health info from model manager
-            health_info = asyncio.run(model_manager.get_health_info())
+            health_info = run_async_in_sync(model_manager.get_health_info())
             return {
                 "success": True,
                 "status": "healthy",
@@ -315,7 +333,7 @@ def handler(job):
             
             # Generate image using Qwen-Image
             start_time = time.time()
-            result_image = asyncio.run(model_manager.generate_image(
+            result_image = run_async_in_sync(model_manager.generate_image(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 width=width,
@@ -357,7 +375,7 @@ def handler(job):
             
             # Edit image using Qwen-Image-Edit
             start_time = time.time()
-            result_image = asyncio.run(model_manager.edit_image(
+            result_image = run_async_in_sync(model_manager.edit_image(
                 image_base64=image_base64,
                 prompt=prompt,
                 negative_prompt=negative_prompt,
