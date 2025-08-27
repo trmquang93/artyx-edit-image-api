@@ -1,5 +1,5 @@
-# Multi-stage Dockerfile for Qwen-Image AI Editing Server
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel as base
+# Optimized Dockerfile for Qwen-Image AI Editing Server
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
 # Set working directory
 WORKDIR /app
@@ -12,42 +12,36 @@ ENV PYTHONUNBUFFERED=1
 ENV TORCH_HOME=/tmp/.torch
 ENV HF_HOME=/tmp/.huggingface
 ENV TRANSFORMERS_CACHE=/tmp/.transformers
+ENV PIP_NO_CACHE_DIR=1
 
 # Pre-configure timezone to prevent interactive prompts
 RUN echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections && \
     echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections
 
-# Install system dependencies with non-interactive mode
+# Install system dependencies with non-interactive mode and clean up in one layer
 RUN apt-get update && apt-get install -y \
     tzdata \
     git \
-    wget \
     curl \
-    build-essential \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Upgrade pip and install build tools
-RUN pip install --upgrade pip setuptools wheel
+    && apt-get clean \
+    && apt-get autoremove -y
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install additional dependencies for production
-RUN pip install --no-cache-dir \
-    xformers \
-    accelerate \
-    safetensors \
-    invisible-watermark
+# Install dependencies in a single layer to reduce disk usage
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir \
+        accelerate \
+        safetensors \
+        invisible-watermark && \
+    pip cache purge && \
+    find /opt/conda -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Copy application code
 COPY . .

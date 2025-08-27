@@ -1,0 +1,31 @@
+# Minimal Dockerfile for RunPod testing
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+
+WORKDIR /app
+
+# Essential environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV RUNPOD_MODE=true
+ENV PIP_NO_CACHE_DIR=1
+
+# Install only essential system packages
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install minimal Python dependencies
+RUN pip install --no-cache-dir \
+    runpod \
+    requests \
+    pillow \
+    fastapi \
+    uvicorn \
+    pydantic
+
+# Copy application code
+COPY . .
+
+# Default command
+CMD ["python", "debug_worker.py"]
