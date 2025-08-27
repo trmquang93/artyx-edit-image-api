@@ -4,6 +4,7 @@ Clean RunPod serverless handler for AI image editing using Qwen-Image models.
 """
 
 import sys
+import os
 import time
 import logging
 import traceback
@@ -30,7 +31,13 @@ def handler(job):
         # Initialize model manager if not already done
         if model_manager is None:
             logger.info("Initializing Qwen-Image model manager...")
-            from models.qwen_image import QwenImageManager
+            try:
+                from models.qwen_image import QwenImageManager
+            except ImportError:
+                # Try alternative import path for RunPod environment
+                sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+                from models.qwen_image import QwenImageManager
+            
             model_manager = QwenImageManager()
             # Run async initialization in sync context
             asyncio.run(model_manager.initialize())
