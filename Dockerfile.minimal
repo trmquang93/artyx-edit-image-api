@@ -29,5 +29,5 @@ RUN pip install --no-cache-dir \
 # Copy application code
 COPY . .
 
-# Default command
-CMD ["python", "debug_simple.py"]
+# Test RunPod installation and then run worker
+CMD ["sh", "-c", "python test_runpod_import.py && python debug_simple.py"]

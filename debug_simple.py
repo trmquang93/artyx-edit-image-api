@@ -73,23 +73,54 @@ def main():
         logger.info("Importing RunPod...")
         try:
             import runpod
-            # Force import serverless submodule
-            import runpod.serverless
-            logger.info("✅ RunPod and serverless module imported successfully")
+            logger.info("✅ RunPod imported successfully")
             logger.info(f"RunPod version: {getattr(runpod, '__version__', 'unknown')}")
+            logger.info(f"RunPod attributes: {[attr for attr in dir(runpod) if not attr.startswith('_')]}")
+            
+            # Check for serverless functionality
+            if hasattr(runpod, 'serverless'):
+                logger.info("✅ runpod.serverless found")
+            else:
+                logger.warning("❌ runpod.serverless not found - checking alternatives")
+                
         except ImportError as e:
             logger.error(f"❌ RunPod import failed: {e}, installing...")
             import subprocess
             subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "runpod"])
             import runpod
-            import runpod.serverless
             logger.info("✅ RunPod installed and imported")
         
         logger.info("Starting RunPod serverless worker...")
-        logger.info("Using standard runpod.serverless.start() API")
         
-        # Start the serverless worker
-        runpod.serverless.start({"handler": simple_handler})
+        # Try to access serverless functionality
+        try:
+            if hasattr(runpod, 'serverless'):
+                logger.info("Using runpod.serverless.start() API")
+                runpod.serverless.start({"handler": simple_handler})
+            else:
+                # Force reinstall if serverless module missing
+                logger.warning("runpod.serverless not available, reinstalling...")
+                import subprocess
+                subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "runpod", "-y"])
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "runpod>=1.7.0"])
+                
+                # Re-import after reinstall
+                import importlib
+                importlib.reload(runpod) if 'runpod' in globals() else None
+                import runpod
+                
+                logger.info("✅ RunPod reinstalled")
+                logger.info(f"RunPod attributes after reinstall: {[attr for attr in dir(runpod) if not attr.startswith('_')]}")
+                
+                if hasattr(runpod, 'serverless'):
+                    logger.info("✅ Using runpod.serverless.start() after reinstall")
+                    runpod.serverless.start({"handler": simple_handler})
+                else:
+                    raise Exception("runpod.serverless still not available after reinstall")
+                    
+        except Exception as serverless_error:
+            logger.error(f"Serverless start error: {serverless_error}")
+            raise
         
     except Exception as e:
         logger.error(f"Startup failed: {e}")
