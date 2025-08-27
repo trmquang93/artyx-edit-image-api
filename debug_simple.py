@@ -82,9 +82,25 @@ def main():
             logger.info("✅ RunPod installed and imported")
         
         logger.info("Starting RunPod serverless worker...")
-        runpod.serverless.start({
-            "handler": simple_handler
-        })
+        
+        # Try different RunPod API patterns
+        try:
+            # New API pattern
+            if hasattr(runpod, 'serverless') and hasattr(runpod.serverless, 'start'):
+                logger.info("Using runpod.serverless.start() API")
+                runpod.serverless.start({"handler": simple_handler})
+            elif hasattr(runpod, 'start'):
+                logger.info("Using runpod.start() API")
+                runpod.start({"handler": simple_handler})
+            else:
+                logger.error("Unknown RunPod API structure")
+                logger.info(f"RunPod attributes: {dir(runpod)}")
+                if hasattr(runpod, '__version__'):
+                    logger.info(f"RunPod version: {runpod.__version__}")
+                raise Exception("RunPod API not found")
+        except Exception as api_error:
+            logger.error(f"RunPod API error: {api_error}")
+            raise
         
     except Exception as e:
         logger.error(f"Startup failed: {e}")
