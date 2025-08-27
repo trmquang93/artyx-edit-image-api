@@ -116,15 +116,13 @@ class QwenImageManager:
         logger.info("Initializing Qwen-Image models...")
         
         try:
-            # Check if torch is available, install if needed
+            # Check if torch is available
             try:
                 import torch
-            except ImportError:
-                logger.info("PyTorch not found, attempting runtime installation...")
-                import subprocess
-                import sys
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchvision", "diffusers", "transformers", "accelerate", "Pillow"])
-                import torch
+            except ImportError as e:
+                logger.error("PyTorch not found. Please ensure torch and related ML dependencies are installed.")
+                logger.error("Required packages: torch, torchvision, diffusers, transformers, accelerate")
+                raise ImportError(f"Missing PyTorch installation: {e}. This should be resolved by updating the Docker image dependencies.")
             
             from diffusers import DiffusionPipeline
             from transformers import set_seed
@@ -389,8 +387,9 @@ def handler(job):
                     "HOME": os.environ.get("HOME", ""),
                 }
             }
-        elif task_type == "edit":
+        elif task_type == "edit" or task_type == "background_replacement":
             image_base64 = job_input.get("image")
+            image_url = job_input.get("image_url")
             prompt = job_input.get("prompt", "edit the image")
             negative_prompt = job_input.get("negative_prompt", "")
             num_inference_steps = job_input.get("num_inference_steps", 30)
@@ -398,10 +397,36 @@ def handler(job):
             strength = job_input.get("strength", 0.8)
             seed = job_input.get("seed")
             
+            # Handle image input - either base64 or URL
+            if image_url and not image_base64:
+                try:
+                    import requests
+                    from PIL import Image
+                    
+                    logger.info(f"Downloading image from URL: {image_url}")
+                    response = requests.get(image_url, timeout=30)
+                    response.raise_for_status()
+                    
+                    # Convert to PIL and then to base64
+                    image = Image.open(io.BytesIO(response.content))
+                    if image.mode != 'RGB':
+                        image = image.convert('RGB')
+                    
+                    # Convert to base64
+                    image_base64 = run_async_in_sync(model_manager.image_processor.pil_to_base64(image))
+                    logger.info("Successfully converted URL image to base64")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to download/convert image from URL: {e}")
+                    return {
+                        "success": False,
+                        "error": f"Failed to process image URL: {str(e)}"
+                    }
+            
             if not image_base64:
                 return {
                     "success": False,
-                    "error": "No input image provided for editing"
+                    "error": "No input image provided for editing. Please provide either 'image' (base64) or 'image_url'."
                 }
             
             # Edit image using Qwen-Image-Edit
@@ -435,7 +460,7 @@ def handler(job):
             return {
                 "success": False,
                 "error": f"Unknown task type: {task_type}",
-                "supported_tasks": ["health", "generate", "edit"]
+                "supported_tasks": ["health", "generate", "edit", "background_replacement", "debug"]
             }
             
     except Exception as e:
