@@ -1,0 +1,32 @@
+# Minimal debug Dockerfile
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables for non-interactive installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV RUNPOD_MODE=true
+ENV LOG_LEVEL=INFO
+
+# Install minimal system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install only essential Python packages
+RUN pip install --no-cache-dir \
+    runpod \
+    requests \
+    pillow
+
+# Copy only essential files
+COPY debug_worker.py .
+COPY utils/ ./utils/
+
+# Default command
+CMD ["python", "debug_worker.py"]
