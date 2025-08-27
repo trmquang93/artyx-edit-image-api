@@ -4,15 +4,22 @@ FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel as base
 # Set working directory
 WORKDIR /app
 
-# Set environment variables
+# Set environment variables for non-interactive installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV TORCH_HOME=/tmp/.torch
 ENV HF_HOME=/tmp/.huggingface
 ENV TRANSFORMERS_CACHE=/tmp/.transformers
 
-# Install system dependencies
+# Pre-configure timezone to prevent interactive prompts
+RUN echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections && \
+    echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections
+
+# Install system dependencies with non-interactive mode
 RUN apt-get update && apt-get install -y \
+    tzdata \
     git \
     wget \
     curl \
@@ -23,7 +30,8 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender-dev \
     libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Upgrade pip and install build tools
 RUN pip install --upgrade pip setuptools wheel
