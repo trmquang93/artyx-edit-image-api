@@ -25,8 +25,20 @@ except ImportError:
     import runpod
 
 # Import our modules
-from models.qwen_image import QwenImageManager
-from utils.logging import setup_logging
+try:
+    from models.qwen_image import QwenImageManager
+    from utils.logging import setup_logging
+except ImportError as e:
+    # Add current directory to path if modules not found
+    import os
+    import sys
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    
+    # Try imports again
+    from models.qwen_image import QwenImageManager
+    from utils.logging import setup_logging
 
 # Global model manager
 model_manager = None

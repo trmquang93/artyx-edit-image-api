@@ -66,9 +66,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
-# Default command - use debug startup for troubleshooting
-CMD ["python", "startup_debug.py"]
+# Default command - RunPod worker with enhanced error handling
+CMD ["python", "runpod_worker.py"]
 
 # Alternative commands:
+# CMD ["python", "startup_debug.py"]     # Debug startup
 # CMD ["python", "main.py"]              # FastAPI server
-# CMD ["python", "runpod_worker.py"]     # Full RunPod worker
