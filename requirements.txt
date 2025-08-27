@@ -12,3 +12,9 @@ numpy>=1.24.0
 runpod>=1.6.0
 python-jose[cryptography]>=3.3.0
 aiofiles>=23.0.0
+# Qwen2-VL specific dependencies
+qwen-vl-utils>=0.0.8
+# Image editing models
+controlnet-aux>=0.0.10
+opencv-python>=4.8.0
+xformers>=0.0.22
