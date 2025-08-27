@@ -99,10 +99,11 @@ def main():
                 runpod.serverless.start({"handler": simple_handler})
             else:
                 # Force reinstall if serverless module missing
-                logger.warning("runpod.serverless not available, reinstalling...")
+                logger.warning("runpod.serverless not available, reinstalling from GitHub...")
                 import subprocess
                 subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "runpod", "-y"])
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "runpod>=1.7.0"])
+                subprocess.check_call([sys.executable, "-m", "pip", "install", 
+                                     "git+https://github.com/runpod/runpod-python.git"])
                 
                 # Re-import after reinstall
                 import importlib

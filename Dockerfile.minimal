@@ -9,17 +9,18 @@ ENV PYTHONUNBUFFERED=1
 ENV RUNPOD_MODE=true
 ENV PIP_NO_CACHE_DIR=1
 
-# Install only essential system packages
+# Install essential system packages including git for GitHub installs
 RUN apt-get update && apt-get install -y \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Install minimal Python dependencies with latest RunPod version
+# Install minimal Python dependencies with RunPod from GitHub (stable version)
 RUN pip install --no-cache-dir \
     --upgrade pip && \
     pip install --no-cache-dir \
-    "runpod>=1.7.0" \
+    git+https://github.com/runpod/runpod-python.git \
     requests \
     pillow \
     fastapi \

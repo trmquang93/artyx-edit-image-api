@@ -54,8 +54,8 @@ def test_runpod_import():
         return False
 
 def reinstall_runpod():
-    """Reinstall RunPod package."""
-    logger.info("=== REINSTALLING RUNPOD ===")
+    """Reinstall RunPod package from GitHub."""
+    logger.info("=== REINSTALLING RUNPOD FROM GITHUB ===")
     
     try:
         # Uninstall
@@ -63,17 +63,28 @@ def reinstall_runpod():
         subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "runpod", "-y"], 
                             capture_output=True, text=True)
         
-        # Install
-        logger.info("Installing RunPod...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "runpod>=1.7.0"], 
+        # Install from GitHub (bypasses broken PyPI versions)
+        logger.info("Installing RunPod from GitHub...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", 
+                             "git+https://github.com/runpod/runpod-python.git"], 
                             capture_output=True, text=True)
         
-        logger.info("✅ RunPod reinstalled successfully")
+        logger.info("✅ RunPod reinstalled from GitHub successfully")
         return True
         
     except Exception as e:
-        logger.error(f"❌ Reinstall failed: {e}")
-        return False
+        logger.error(f"❌ GitHub reinstall failed: {e}")
+        
+        # Fallback to PyPI with specific version
+        try:
+            logger.info("Trying fallback PyPI installation...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "runpod>=1.7.13"], 
+                                capture_output=True, text=True)
+            logger.info("✅ RunPod installed from PyPI fallback")
+            return True
+        except Exception as fallback_error:
+            logger.error(f"❌ Fallback install failed: {fallback_error}")
+            return False
 
 def main():
     """Main test function."""
