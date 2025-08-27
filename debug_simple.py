@@ -73,34 +73,23 @@ def main():
         logger.info("Importing RunPod...")
         try:
             import runpod
-            logger.info("✅ RunPod imported successfully")
-        except ImportError:
-            logger.error("❌ RunPod import failed, installing...")
+            # Force import serverless submodule
+            import runpod.serverless
+            logger.info("✅ RunPod and serverless module imported successfully")
+            logger.info(f"RunPod version: {getattr(runpod, '__version__', 'unknown')}")
+        except ImportError as e:
+            logger.error(f"❌ RunPod import failed: {e}, installing...")
             import subprocess
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "runpod"])
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "runpod"])
             import runpod
+            import runpod.serverless
             logger.info("✅ RunPod installed and imported")
         
         logger.info("Starting RunPod serverless worker...")
+        logger.info("Using standard runpod.serverless.start() API")
         
-        # Try different RunPod API patterns
-        try:
-            # New API pattern
-            if hasattr(runpod, 'serverless') and hasattr(runpod.serverless, 'start'):
-                logger.info("Using runpod.serverless.start() API")
-                runpod.serverless.start({"handler": simple_handler})
-            elif hasattr(runpod, 'start'):
-                logger.info("Using runpod.start() API")
-                runpod.start({"handler": simple_handler})
-            else:
-                logger.error("Unknown RunPod API structure")
-                logger.info(f"RunPod attributes: {dir(runpod)}")
-                if hasattr(runpod, '__version__'):
-                    logger.info(f"RunPod version: {runpod.__version__}")
-                raise Exception("RunPod API not found")
-        except Exception as api_error:
-            logger.error(f"RunPod API error: {api_error}")
-            raise
+        # Start the serverless worker
+        runpod.serverless.start({"handler": simple_handler})
         
     except Exception as e:
         logger.error(f"Startup failed: {e}")
