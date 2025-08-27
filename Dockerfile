@@ -1,0 +1,65 @@
+# Multi-stage Dockerfile for Qwen-Image AI Editing Server
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel as base
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV TORCH_HOME=/tmp/.torch
+ENV HF_HOME=/tmp/.huggingface
+ENV TRANSFORMERS_CACHE=/tmp/.transformers
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    curl \
+    build-essential \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install build tools
+RUN pip install --upgrade pip setuptools wheel
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional dependencies for production
+RUN pip install --no-cache-dir \
+    xformers \
+    accelerate \
+    safetensors \
+    invisible-watermark
+
+# Copy application code
+COPY . .
+
+# Create cache directories with proper permissions
+RUN mkdir -p /tmp/.torch /tmp/.huggingface /tmp/.transformers && \
+    chmod -R 777 /tmp/.torch /tmp/.huggingface /tmp/.transformers
+
+# Pre-download models (optional, for faster cold starts)
+# RUN python -c "from diffusers import DiffusionPipeline; DiffusionPipeline.from_pretrained('Qwen/Qwen-Image', torch_dtype=torch.float16)"
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+# Default command for FastAPI server
+CMD ["python", "main.py"]
+
+# Alternative command for RunPod serverless
+# CMD ["python", "runpod/handler.py"]

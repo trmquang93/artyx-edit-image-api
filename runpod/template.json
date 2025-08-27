@@ -1,0 +1,34 @@
+{
+  "name": "qwen-image-editing-server",
+  "description": "AI Image Editing Server using Qwen-Image model for text-to-image generation and image editing",
+  "readme": "# Qwen-Image AI Editing Server\n\nAdvanced AI image generation and editing server using Qwen-Image 20B model.\n\n## Features\n- Text-to-image generation\n- Image editing with prompts\n- High-resolution output (up to 2048x2048)\n- Multi-language support\n- Fast processing with GPU acceleration\n\n## Usage\n\n### Text-to-Image Generation\n```python\ninput = {\n  \"task\": \"generate\",\n  \"prompt\": \"A beautiful landscape with mountains\",\n  \"width\": 1024,\n  \"height\": 1024,\n  \"num_inference_steps\": 50,\n  \"guidance_scale\": 4.0\n}\n```\n\n### Image Editing\n```python\ninput = {\n  \"task\": \"edit\",\n  \"image\": \"<base64_encoded_image>\",\n  \"prompt\": \"Change the sky to sunset colors\",\n  \"strength\": 0.8,\n  \"num_inference_steps\": 50\n}\n```\n\n### Health Check\n```python\ninput = {\n  \"task\": \"health\"\n}\n```",
+  "dockerArgs": "",
+  "containerDiskInGb": 50,
+  "volumeInGb": 0,
+  "volumeMountPath": "",
+  "ports": "8000/http",
+  "env": [
+    {
+      "key": "LOG_LEVEL",
+      "value": "INFO",
+      "description": "Logging level (DEBUG, INFO, WARNING, ERROR)"
+    },
+    {
+      "key": "TORCH_HOME",
+      "value": "/tmp/.torch",
+      "description": "PyTorch cache directory"
+    },
+    {
+      "key": "HF_HOME",
+      "value": "/tmp/.huggingface",
+      "description": "HuggingFace cache directory"
+    },
+    {
+      "key": "TRANSFORMERS_CACHE",
+      "value": "/tmp/.transformers",
+      "description": "Transformers cache directory"
+    }
+  ],
+  "isPublic": false,
+  "imageName": "qwen-image-server:latest"
+}
