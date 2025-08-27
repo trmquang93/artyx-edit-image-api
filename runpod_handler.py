@@ -116,7 +116,16 @@ class QwenImageManager:
         logger.info("Initializing Qwen-Image models...")
         
         try:
-            import torch
+            # Check if torch is available, install if needed
+            try:
+                import torch
+            except ImportError:
+                logger.info("PyTorch not found, attempting runtime installation...")
+                import subprocess
+                import sys
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchvision", "diffusers", "transformers", "accelerate", "Pillow"])
+                import torch
+            
             from diffusers import DiffusionPipeline
             from transformers import set_seed
             
@@ -356,6 +365,28 @@ def handler(job):
                     "steps": num_inference_steps,
                     "guidance_scale": guidance_scale,
                     "seed": seed
+                }
+            }
+        elif task_type == "debug":
+            # Debug endpoint to check available packages
+            import subprocess
+            
+            try:
+                result = subprocess.run([sys.executable, "-m", "pip", "list"], 
+                                      capture_output=True, text=True, timeout=30)
+                pip_list = result.stdout
+            except:
+                pip_list = "Could not get pip list"
+            
+            return {
+                "success": True,
+                "python_version": sys.version,
+                "python_path": sys.executable,
+                "installed_packages": pip_list[:2000],  # Truncate to avoid huge response
+                "environment_vars": {
+                    "PATH": os.environ.get("PATH", "")[:500],
+                    "PYTHONPATH": os.environ.get("PYTHONPATH", ""),
+                    "HOME": os.environ.get("HOME", ""),
                 }
             }
         elif task_type == "edit":
