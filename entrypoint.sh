@@ -34,5 +34,5 @@ except ImportError:
     echo "Debug complete. Exiting..."
 else
     echo "🤖 Starting RunPod serverless worker with AI processing..."
-    exec python -u runpod_worker.py
+    exec python -u runpod_handler.py
 fi
