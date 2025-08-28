@@ -290,24 +290,23 @@ class QwenImageManager:
                 mask = Image.new('L', (width, height), 0)  # Black mask
                 draw = ImageDraw.Draw(mask)
                 
-                # Create a more aggressive mask for better background replacement
-                # Fill most of the image except for center subject
-                draw.rectangle([0, 0, width, height], fill=255)  # Fill everything white first
+                # Create an aggressive mask for strong background replacement
+                # Fill entire image to replace everything
+                draw.rectangle([0, 0, width, height], fill=255)  # Replace everything
                 
-                # Keep a smaller center area for the subject (black = preserve)
+                # Only preserve a very small center circle for main subject
                 center_x, center_y = width // 2, height // 2
-                subject_w, subject_h = width // 4, height // 4  # Smaller preservation area
+                subject_radius = min(width, height) // 6  # Very small preservation area
                 draw.ellipse([
-                    center_x - subject_w, center_y - subject_h,
-                    center_x + subject_w, center_y + subject_h
-                ], fill=0)  # Keep center subject (smaller area)
+                    center_x - subject_radius, center_y - subject_radius,
+                    center_x + subject_radius, center_y + subject_radius
+                ], fill=0)  # Keep only very center of subject
                 
                 mask_image = mask
                 
-                # Enhance prompt for Qwen-style background replacement (keep it concise)  
-                # Limit to ~50 tokens to avoid CLIP truncation
-                enhanced_prompt = f"{prompt}, high quality, detailed"
-                negative_prompt = "blurry, low quality, bad anatomy"
+                # Use client prompt exactly as provided - no server-side enhancement
+                enhanced_prompt = prompt
+                negative_prompt = negative_prompt or "blurry, low quality"
                 
                 # Debug: Log mask statistics
                 import numpy as np
@@ -321,9 +320,9 @@ class QwenImageManager:
                 logger.info(f"📝 Prompt: '{enhanced_prompt}' ({len(enhanced_prompt)} chars)")
                 
                 # Generate the result using AI with optimized parameters
-                # Use higher strength for more dramatic background replacement
-                actual_strength = max(strength, 0.9)  # Ensure minimum 90% change
-                actual_steps = max(num_inference_steps, 20)  # Ensure minimum quality
+                # Use maximum strength for dramatic background replacement
+                actual_strength = max(strength, 0.95)  # Ensure minimum 95% change
+                actual_steps = max(num_inference_steps, 25)  # Ensure good quality
                 
                 result = self.inpaint_pipeline(
                     prompt=enhanced_prompt,
