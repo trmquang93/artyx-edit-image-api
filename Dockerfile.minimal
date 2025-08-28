@@ -34,5 +34,5 @@ RUN pip install --upgrade pip && \
 # Copy application code
 COPY . .
 
-# Start clean handler with proper serverless import
-CMD ["python", "-u", "runpod_handler.py"]
+# Start synchronous handler to avoid event loop conflicts
+CMD ["python", "-u", "runpod_handler_sync.py"]
