@@ -290,39 +290,52 @@ class QwenImageManager:
                 mask = Image.new('L', (width, height), 0)  # Black mask
                 draw = ImageDraw.Draw(mask)
                 
-                # Create border mask for background areas (white = inpaint, black = keep)
-                border_width = min(width, height) // 8
-                draw.rectangle([0, 0, width, border_width], fill=255)  # Top
-                draw.rectangle([0, height-border_width, width, height], fill=255)  # Bottom  
-                draw.rectangle([0, 0, border_width, height], fill=255)  # Left
-                draw.rectangle([width-border_width, 0, width, height], fill=255)  # Right
+                # Create a more aggressive mask for better background replacement
+                # Fill most of the image except for center subject
+                draw.rectangle([0, 0, width, height], fill=255)  # Fill everything white first
                 
-                # Keep center subject area clear (preserve main subject)
+                # Keep a smaller center area for the subject (black = preserve)
                 center_x, center_y = width // 2, height // 2
-                ellipse_w, ellipse_h = width // 3, height // 3
+                subject_w, subject_h = width // 4, height // 4  # Smaller preservation area
                 draw.ellipse([
-                    center_x - ellipse_w, center_y - ellipse_h,
-                    center_x + ellipse_w, center_y + ellipse_h
-                ], fill=0)  # Keep center subject
+                    center_x - subject_w, center_y - subject_h,
+                    center_x + subject_w, center_y + subject_h
+                ], fill=0)  # Keep center subject (smaller area)
                 
                 mask_image = mask
                 
+                # Enhance prompt for Qwen-style background replacement (keep it concise)  
+                # Limit to ~50 tokens to avoid CLIP truncation
+                enhanced_prompt = f"{prompt}, high quality, detailed"
+                negative_prompt = "blurry, low quality, bad anatomy"
+                
+                # Debug: Log mask statistics
+                import numpy as np
+                mask_array = np.array(mask_image)
+                white_pixels = np.sum(mask_array == 255)
+                black_pixels = np.sum(mask_array == 0)
+                total_pixels = mask_array.size
+                
+                logger.info(f"🎭 Mask stats: {white_pixels}/{total_pixels} pixels will be inpainted ({100*white_pixels/total_pixels:.1f}%)")
                 logger.info(f"🎯 Processing with Qwen-style AI model: {num_inference_steps} steps")
+                logger.info(f"📝 Prompt: '{enhanced_prompt}' ({len(enhanced_prompt)} chars)")
                 
-                # Enhance prompt for Qwen-style background replacement
-                enhanced_prompt = f"Replace background with: {prompt}, high quality, detailed, masterpiece, best quality"
-                negative_prompt = "blurry, low quality, distorted, bad anatomy, worst quality"
+                # Generate the result using AI with optimized parameters
+                # Use higher strength for more dramatic background replacement
+                actual_strength = max(strength, 0.9)  # Ensure minimum 90% change
+                actual_steps = max(num_inference_steps, 20)  # Ensure minimum quality
                 
-                # Generate the result using AI
                 result = self.inpaint_pipeline(
                     prompt=enhanced_prompt,
                     negative_prompt=negative_prompt,
                     image=input_image,
                     mask_image=mask_image,
-                    num_inference_steps=min(num_inference_steps, 20),  # Limit steps for performance
+                    num_inference_steps=actual_steps,
                     guidance_scale=guidance_scale,
-                    strength=strength
+                    strength=actual_strength
                 ).images[0]
+                
+                logger.info(f"⚙️ Used strength={actual_strength}, steps={actual_steps}")
                 
                 logger.info("✅ Qwen-style AI image editing completed")
                 
