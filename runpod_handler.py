@@ -322,7 +322,7 @@ class QwenImageManager:
                 # Generate the result using AI with optimized parameters
                 # Use maximum strength for dramatic background replacement
                 actual_strength = max(strength, 0.95)  # Ensure minimum 95% change
-                actual_steps = max(num_inference_steps, 25)  # Ensure good quality
+                actual_steps = max(num_inference_steps, 50)  # Higher quality with more steps
                 
                 result = self.inpaint_pipeline(
                     prompt=enhanced_prompt,
@@ -470,7 +470,7 @@ def handler(job):
             negative_prompt = job_input.get("negative_prompt", "")
             width = job_input.get("width", 1024)
             height = job_input.get("height", 1024)
-            num_inference_steps = job_input.get("num_inference_steps", 30)
+            num_inference_steps = job_input.get("num_inference_steps", 50)
             guidance_scale = job_input.get("guidance_scale", 4.0)
             seed = job_input.get("seed")
             
@@ -528,7 +528,7 @@ def handler(job):
             image_url = job_input.get("image_url")
             prompt = job_input.get("prompt", "edit the image")
             negative_prompt = job_input.get("negative_prompt", "")
-            num_inference_steps = job_input.get("num_inference_steps", 30)
+            num_inference_steps = job_input.get("num_inference_steps", 50)
             guidance_scale = job_input.get("guidance_scale", 4.0)
             strength = job_input.get("strength", 0.8)
             seed = job_input.get("seed")
