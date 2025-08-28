@@ -88,7 +88,7 @@ def handler(job):
         try:
             if task_type == "generate":
                 result = loop.run_until_complete(handle_generate(manager, job_input))
-            elif task_type == "edit":
+            elif task_type == "edit" or task_type == "background_replacement":
                 result = loop.run_until_complete(handle_edit(manager, job_input))
             elif task_type == "health":
                 result = loop.run_until_complete(handle_health(manager, job_input))
@@ -96,7 +96,7 @@ def handler(job):
                 result = {
                     "success": False,
                     "error": f"Unknown task type: {task_type}",
-                    "supported_tasks": ["generate", "edit", "health"]
+                    "supported_tasks": ["generate", "edit", "background_replacement", "health"]
                 }
             
             return result

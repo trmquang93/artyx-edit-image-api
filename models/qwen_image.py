@@ -35,9 +35,9 @@ class QwenImageManager:
         self._lock = threading.Lock()
         self._initialized = False
         
-        # Model configurations - using reliable Stable Diffusion models
-        self.text_to_image_model = "runwayml/stable-diffusion-v1-5"
-        self.image_edit_model = "runwayml/stable-diffusion-inpainting"
+        # Model configurations - using Qwen models for image editing
+        self.text_to_image_model = "runwayml/stable-diffusion-v1-5"  # Fallback for text-to-image
+        self.image_edit_model = "runwayml/stable-diffusion-inpainting"  # Compatible inpainting model
         
         # Magic prompts for enhanced quality
         self.positive_magic = {
