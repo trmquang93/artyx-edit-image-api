@@ -259,26 +259,24 @@ class QwenImageManager:
             input_image = self.image_processor.base64_to_pil(image_base64)
             logger.info(f"✅ Input image decoded successfully: {input_image.size}")
             
-            # Try to use Qwen Image Edit pipeline
+            # Try to use actual Qwen Image Edit model
             try:
-                from diffusers import StableDiffusionInpaintPipeline
+                from diffusers import QwenImageEditPipeline
                 import torch
                 
-                # Load Qwen-compatible inpainting pipeline if not already loaded
-                if not hasattr(self, 'inpaint_pipeline'):
-                    logger.info("🔄 Loading Qwen Image Edit compatible model...")
-                    self.inpaint_pipeline = StableDiffusionInpaintPipeline.from_pretrained(
-                        "runwayml/stable-diffusion-inpainting",
-                        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                        safety_checker=None,
-                        requires_safety_checker=False
+                # Load actual Qwen Image Edit model if not already loaded
+                if not hasattr(self, 'qwen_pipeline'):
+                    logger.info("🔄 Loading actual Qwen Image Edit model...")
+                    self.qwen_pipeline = QwenImageEditPipeline.from_pretrained(
+                        "Qwen/Qwen-Image-Edit",
+                        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32
                     )
                     
                     if torch.cuda.is_available():
-                        self.inpaint_pipeline = self.inpaint_pipeline.to("cuda")
-                        logger.info("✅ Qwen-compatible model loaded on GPU")
+                        self.qwen_pipeline = self.qwen_pipeline.to("cuda")
+                        logger.info("✅ Real Qwen Image Edit model loaded on GPU")
                     else:
-                        logger.info("⚠️ Qwen-compatible model loaded on CPU (slower)")
+                        logger.info("⚠️ Real Qwen Image Edit model loaded on CPU (slower)")
                 
                 # Create a background-focused mask for Qwen-style editing
                 from PIL import Image, ImageDraw
@@ -290,54 +288,34 @@ class QwenImageManager:
                 mask = Image.new('L', (width, height), 0)  # Black mask
                 draw = ImageDraw.Draw(mask)
                 
-                # Create an aggressive mask for strong background replacement
-                # Fill entire image to replace everything
-                draw.rectangle([0, 0, width, height], fill=255)  # Replace everything
-                
-                # Only preserve a very small center circle for main subject
-                center_x, center_y = width // 2, height // 2
-                subject_radius = min(width, height) // 6  # Very small preservation area
-                draw.ellipse([
-                    center_x - subject_radius, center_y - subject_radius,
-                    center_x + subject_radius, center_y + subject_radius
-                ], fill=0)  # Keep only very center of subject
-                
-                mask_image = mask
+                # Qwen Image Edit doesn't use masks like Stable Diffusion
+                # It works with direct image-to-image editing using prompts
+                # Remove mask creation as Qwen handles region detection automatically
                 
                 # Use client prompt exactly as provided - no server-side enhancement
                 enhanced_prompt = prompt
                 negative_prompt = negative_prompt or "blurry, low quality"
                 
-                # Debug: Log mask statistics
-                import numpy as np
-                mask_array = np.array(mask_image)
-                white_pixels = np.sum(mask_array == 255)
-                black_pixels = np.sum(mask_array == 0)
-                total_pixels = mask_array.size
-                
-                logger.info(f"🎭 Mask stats: {white_pixels}/{total_pixels} pixels will be inpainted ({100*white_pixels/total_pixels:.1f}%)")
-                
-                # Generate the result using AI with optimized parameters
-                # Use maximum strength for dramatic background replacement
-                actual_strength = max(strength, 0.95)  # Ensure minimum 95% change
+                # Generate the result using actual Qwen Image Edit model
                 actual_steps = max(num_inference_steps, 50)  # Higher quality with more steps
                 
-                logger.info(f"🎯 Processing with Qwen-style AI model: {actual_steps} steps (client requested: {num_inference_steps})")
+                logger.info(f"🎯 Processing with real Qwen Image Edit model: {actual_steps} steps (client requested: {num_inference_steps})")
                 logger.info(f"📝 Prompt: '{enhanced_prompt}' ({len(enhanced_prompt)} chars)")
                 
-                result = self.inpaint_pipeline(
-                    prompt=enhanced_prompt,
-                    negative_prompt=negative_prompt,
-                    image=input_image,
-                    mask_image=mask_image,
-                    num_inference_steps=actual_steps,
-                    guidance_scale=guidance_scale,
-                    strength=actual_strength
-                ).images[0]
+                # Use Qwen Image Edit API format (no masks needed)
+                with torch.inference_mode():
+                    result = self.qwen_pipeline(
+                        image=input_image,
+                        prompt=enhanced_prompt,
+                        negative_prompt=negative_prompt,
+                        num_inference_steps=actual_steps,
+                        true_cfg_scale=guidance_scale,
+                        generator=torch.manual_seed(42)
+                    ).images[0]
                 
-                logger.info(f"⚙️ Used strength={actual_strength}, steps={actual_steps}")
+                logger.info(f"⚙️ Used steps={actual_steps}, guidance_scale={guidance_scale}")
                 
-                logger.info("✅ Qwen-style AI image editing completed")
+                logger.info("✅ Real Qwen Image Edit completed")
                 
                 # Convert back to base64
                 return self.image_processor.pil_to_base64(result)
