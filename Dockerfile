@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install dependencies in a single layer to reduce disk usage
+# Note: git+https urls in requirements.txt need git to be installed
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir \
@@ -51,7 +52,10 @@ RUN mkdir -p /tmp/.torch /tmp/.huggingface /tmp/.transformers && \
     chmod -R 777 /tmp/.torch /tmp/.huggingface /tmp/.transformers
 
 # Pre-download models (optional, for faster cold starts)
-# RUN python -c "from diffusers import DiffusionPipeline; DiffusionPipeline.from_pretrained('Qwen/Qwen-Image', torch_dtype=torch.float16)"
+RUN python -c "import torch; from diffusers import DiffusionPipeline, QwenImageEditPipeline; \
+DiffusionPipeline.from_pretrained('Qwen/Qwen-Image', torch_dtype=torch.bfloat16); \
+QwenImageEditPipeline.from_pretrained('Qwen/Qwen-Image-Edit')" || \
+echo "Warning: Could not pre-download Qwen models - they will be downloaded on first use"
 
 # Expose port
 EXPOSE 8000

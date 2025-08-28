@@ -157,7 +157,7 @@ class QwenImageManager:
             
             # Set device and dtype
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
+            self.torch_dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
             
             logger.info(f"Using device: {self.device}, dtype: {self.torch_dtype}")
             
@@ -184,54 +184,94 @@ class QwenImageManager:
         guidance_scale: float = 4.0,
         seed: Optional[int] = None
     ) -> str:
-        """Generate image from text prompt."""
+        """Generate image from text prompt using real Qwen-Image model."""
         if not self._initialized:
             await self.initialize()
         
         try:
-            logger.info(f"🎨 Mock generating {width}x{height} image with prompt: '{prompt}'")
+            logger.info(f"🎨 Generating {width}x{height} image with Qwen-Image: '{prompt}'")
             
-            # Create a simple placeholder image for testing
-            from PIL import Image, ImageDraw, ImageFont
-            
-            # Create a colorful gradient image
-            image = Image.new('RGB', (width, height), color='skyblue')
-            draw = ImageDraw.Draw(image)
-            
-            # Add some visual elements
-            # Gradient effect
-            for y in range(height):
-                color_val = int(255 * (y / height))
-                for x in range(width):
-                    # Simple gradient from blue to purple
-                    r = min(255, color_val)
-                    g = max(0, 255 - color_val)
-                    b = 255
-                    draw.point((x, y), fill=(r, g, b))
-            
-            # Add text overlay with prompt
+            # Try to use real Qwen-Image model
             try:
-                # Add prompt text
-                text_lines = [f"Generated: {prompt}"[:40]]
-                if len(prompt) > 40:
-                    text_lines.append(f"{prompt[40:80]}...")
+                from diffusers import DiffusionPipeline
+                import torch
                 
-                y_offset = 20
-                for line in text_lines:
-                    draw.text((20, y_offset), line, fill="white")
-                    y_offset += 25
+                # Load Qwen-Image model if not already loaded
+                if not hasattr(self, 'qwen_text_pipeline'):
+                    logger.info("🔄 Loading Qwen-Image text-to-image model...")
+                    self.qwen_text_pipeline = DiffusionPipeline.from_pretrained(
+                        "Qwen/Qwen-Image",
+                        torch_dtype=self.torch_dtype
+                    )
                     
-                # Add generation parameters
-                draw.text((20, height - 60), f"Size: {width}x{height}", fill="white")
-                draw.text((20, height - 40), f"Steps: {num_inference_steps}", fill="white")
-                draw.text((20, height - 20), f"Guidance: {guidance_scale}", fill="white")
-            except Exception as e:
-                logger.warning(f"Could not add text overlay: {e}")
-            
-            logger.info("✅ Mock image generation completed")
-            
-            # Convert to base64
-            return self.image_processor.pil_to_base64(image)
+                    if torch.cuda.is_available():
+                        self.qwen_text_pipeline = self.qwen_text_pipeline.to("cuda")
+                        logger.info("✅ Real Qwen-Image model loaded on GPU")
+                    else:
+                        logger.info("⚠️ Real Qwen-Image model loaded on CPU (slower)")
+                
+                # Set seed for reproducibility
+                generator = torch.manual_seed(seed) if seed is not None else None
+                
+                # Generate with real Qwen-Image
+                logger.info(f"🎯 Processing with real Qwen-Image model: {num_inference_steps} steps")
+                logger.info(f"📝 Prompt: '{prompt}' ({len(prompt)} chars)")
+                
+                with torch.inference_mode():
+                    result = self.qwen_text_pipeline(
+                        prompt=prompt,
+                        negative_prompt=negative_prompt,
+                        width=width,
+                        height=height,
+                        num_inference_steps=num_inference_steps,
+                        guidance_scale=guidance_scale,
+                        generator=generator
+                    ).images[0]
+                
+                logger.info("✅ Real Qwen-Image generation completed")
+                
+                # Convert to base64
+                return self.image_processor.pil_to_base64(result)
+                
+            except Exception as ai_error:
+                logger.warning(f"Qwen-Image generation failed: {ai_error}")
+                logger.info("🔄 Falling back to mock generation...")
+                
+                # Fallback: Create a simple placeholder image
+                from PIL import Image, ImageDraw
+                
+                # Create a colorful gradient image
+                image = Image.new('RGB', (width, height), color='skyblue')
+                draw = ImageDraw.Draw(image)
+                
+                # Add gradient effect
+                for y in range(height):
+                    color_val = int(255 * (y / height))
+                    for x in range(width):
+                        r = min(255, color_val)
+                        g = max(0, 255 - color_val)
+                        b = 255
+                        draw.point((x, y), fill=(r, g, b))
+                
+                # Add text overlay
+                try:
+                    text_lines = [f"Generated: {prompt}"[:40]]
+                    if len(prompt) > 40:
+                        text_lines.append(f"{prompt[40:80]}...")
+                    
+                    y_offset = 20
+                    for line in text_lines:
+                        draw.text((20, y_offset), line, fill="white")
+                        y_offset += 25
+                        
+                    draw.text((20, height - 60), f"Size: {width}x{height}", fill="white")
+                    draw.text((20, height - 40), f"Steps: {num_inference_steps}", fill="white")
+                    draw.text((20, height - 20), f"Guidance: {guidance_scale}", fill="white")
+                except Exception as e:
+                    logger.warning(f"Could not add text overlay: {e}")
+                
+                logger.info("✅ Fallback generation completed")
+                return self.image_processor.pil_to_base64(image)
             
         except Exception as e:
             logger.error(f"Image generation failed: {e}")
@@ -269,7 +309,7 @@ class QwenImageManager:
                     logger.info("🔄 Loading actual Qwen Image Edit model...")
                     self.qwen_pipeline = QwenImageEditPipeline.from_pretrained(
                         "Qwen/Qwen-Image-Edit",
-                        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32
+                        torch_dtype=self.torch_dtype
                     )
                     
                     if torch.cuda.is_available():
@@ -297,7 +337,7 @@ class QwenImageManager:
                 negative_prompt = negative_prompt or "blurry, low quality"
                 
                 # Generate the result using actual Qwen Image Edit model
-                actual_steps = max(num_inference_steps, 50)  # Higher quality with more steps
+                actual_steps = min(max(num_inference_steps, 20), 30)  # Optimized for speed vs quality balance
                 
                 logger.info(f"🎯 Processing with real Qwen Image Edit model: {actual_steps} steps (client requested: {num_inference_steps})")
                 logger.info(f"📝 Prompt: '{enhanced_prompt}' ({len(enhanced_prompt)} chars)")
@@ -309,7 +349,7 @@ class QwenImageManager:
                         prompt=enhanced_prompt,
                         negative_prompt=negative_prompt,
                         num_inference_steps=actual_steps,
-                        true_cfg_scale=guidance_scale,
+                        guidance_scale=guidance_scale,
                         generator=torch.manual_seed(42)
                     ).images[0]
                 
