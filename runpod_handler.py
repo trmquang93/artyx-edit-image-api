@@ -316,13 +316,14 @@ class QwenImageManager:
                 total_pixels = mask_array.size
                 
                 logger.info(f"🎭 Mask stats: {white_pixels}/{total_pixels} pixels will be inpainted ({100*white_pixels/total_pixels:.1f}%)")
-                logger.info(f"🎯 Processing with Qwen-style AI model: {num_inference_steps} steps")
-                logger.info(f"📝 Prompt: '{enhanced_prompt}' ({len(enhanced_prompt)} chars)")
                 
                 # Generate the result using AI with optimized parameters
                 # Use maximum strength for dramatic background replacement
                 actual_strength = max(strength, 0.95)  # Ensure minimum 95% change
                 actual_steps = max(num_inference_steps, 50)  # Higher quality with more steps
+                
+                logger.info(f"🎯 Processing with Qwen-style AI model: {actual_steps} steps (client requested: {num_inference_steps})")
+                logger.info(f"📝 Prompt: '{enhanced_prompt}' ({len(enhanced_prompt)} chars)")
                 
                 result = self.inpaint_pipeline(
                     prompt=enhanced_prompt,
