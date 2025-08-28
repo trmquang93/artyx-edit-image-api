@@ -24,38 +24,39 @@ logger = logging.getLogger(__name__)
 
 
 def run_async_in_sync(coro):
-    """Run async function in sync context, handling existing event loops."""
-    try:
-        # Try to get the current event loop
+    """Run async function in sync context - simplified for RunPod compatibility."""
+    # For RunPod serverless, we'll avoid complex async handling
+    # and use a thread-based approach that's more reliable
+    import concurrent.futures
+    import threading
+    
+    def run_in_new_thread():
+        """Run the coroutine in a new thread with its own event loop."""
+        # Create a fresh event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            loop = asyncio.get_running_loop()
-            # If we're in a running loop, we need to run the coroutine in a thread
-            logger.info("Running async function in thread pool (existing event loop detected)")
-            import concurrent.futures
-            import threading
-            
-            def run_in_new_loop():
-                # Create a new event loop for this thread
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-                try:
-                    return new_loop.run_until_complete(coro)
-                finally:
-                    new_loop.close()
-            
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(run_in_new_loop)
-                return future.result()
-                
-        except RuntimeError:
-            # No running loop, safe to use asyncio.run
-            logger.info("Running async function with asyncio.run (no existing event loop)")
-            return asyncio.run(coro)
-            
-    except Exception as e:
-        logger.error(f"Failed to run async function: {e}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise
+            return loop.run_until_complete(coro)
+        except Exception as e:
+            logger.error(f"Error in async execution: {e}")
+            raise
+        finally:
+            try:
+                # Clean up pending tasks
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception:
+                pass
+            finally:
+                loop.close()
+    
+    # Always run in a separate thread to avoid event loop conflicts
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(run_in_new_thread)
+        return future.result(timeout=300)  # 5 minute timeout
 
 
 class ImageProcessor:
@@ -64,7 +65,7 @@ class ImageProcessor:
     def __init__(self):
         self.max_size = 2048
     
-    async def base64_to_pil(self, base64_string: str):
+    def base64_to_pil(self, base64_string: str):
         """Convert base64 string to PIL Image."""
         try:
             from PIL import Image
@@ -89,7 +90,7 @@ class ImageProcessor:
             logger.error(f"Failed to convert base64 to PIL image: {e}")
             raise ValueError(f"Invalid image data: {str(e)}")
     
-    async def pil_to_base64(self, image, format: str = 'PNG') -> str:
+    def pil_to_base64(self, image, format: str = 'PNG') -> str:
         """Convert PIL Image to base64 string."""
         try:
             # Ensure RGB mode
@@ -230,7 +231,7 @@ class QwenImageManager:
             logger.info("✅ Mock image generation completed")
             
             # Convert to base64
-            return await self.image_processor.pil_to_base64(image)
+            return self.image_processor.pil_to_base64(image)
             
         except Exception as e:
             logger.error(f"Image generation failed: {e}")
@@ -256,7 +257,7 @@ class QwenImageManager:
             logger.info(f"🎨 Mock editing image with prompt: '{prompt}'")
             
             # Decode input image to verify it's valid
-            input_image = await self.image_processor.base64_to_pil(image_base64)
+            input_image = self.image_processor.base64_to_pil(image_base64)
             logger.info(f"✅ Input image decoded successfully: {input_image.size}")
             
             # For demonstration, return the original image with a border
@@ -283,7 +284,7 @@ class QwenImageManager:
             logger.info("✅ Mock image editing completed")
             
             # Convert back to base64
-            return await self.image_processor.pil_to_base64(edited_image)
+            return self.image_processor.pil_to_base64(edited_image)
             
         except Exception as e:
             logger.error(f"Image editing failed: {e}")
@@ -444,7 +445,7 @@ def handler(job):
                         image = image.convert('RGB')
                     
                     # Convert to base64
-                    image_base64 = run_async_in_sync(model_manager.image_processor.pil_to_base64(image))
+                    image_base64 = model_manager.image_processor.pil_to_base64(image)
                     logger.info("Successfully converted URL image to base64")
                     
                 except Exception as e:
