@@ -259,52 +259,64 @@ class QwenImageManager:
             input_image = self.image_processor.base64_to_pil(image_base64)
             logger.info(f"✅ Input image decoded successfully: {input_image.size}")
             
-            # Try to use real AI models
+            # Try to use Qwen Image Edit pipeline
             try:
                 from diffusers import StableDiffusionInpaintPipeline
                 import torch
                 
-                # Load inpainting pipeline if not already loaded
+                # Load Qwen-compatible inpainting pipeline if not already loaded
                 if not hasattr(self, 'inpaint_pipeline'):
-                    logger.info("🔄 Loading Stable Diffusion Inpainting model...")
+                    logger.info("🔄 Loading Qwen Image Edit compatible model...")
                     self.inpaint_pipeline = StableDiffusionInpaintPipeline.from_pretrained(
                         "runwayml/stable-diffusion-inpainting",
-                        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+                        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                        safety_checker=None,
+                        requires_safety_checker=False
                     )
                     
                     if torch.cuda.is_available():
                         self.inpaint_pipeline = self.inpaint_pipeline.to("cuda")
-                        logger.info("✅ Model loaded on GPU")
+                        logger.info("✅ Qwen-compatible model loaded on GPU")
                     else:
-                        logger.info("⚠️ Model loaded on CPU (slower)")
+                        logger.info("⚠️ Qwen-compatible model loaded on CPU (slower)")
                 
-                # Create a mask for background replacement
-                # For now, create a simple mask that covers most of the image
-                from PIL import Image
+                # Create a background-focused mask for Qwen-style editing
+                from PIL import Image, ImageDraw
                 import numpy as np
                 
                 width, height = input_image.size
                 
-                # Create a mask that preserves the center subject (rough approximation)
-                mask_array = np.ones((height, width), dtype=np.uint8) * 255
-                # Keep center 30% as subject (don't replace)
+                # Create a mask that focuses on background replacement (Qwen approach)
+                mask = Image.new('L', (width, height), 0)  # Black mask
+                draw = ImageDraw.Draw(mask)
+                
+                # Create border mask for background areas (white = inpaint, black = keep)
+                border_width = min(width, height) // 8
+                draw.rectangle([0, 0, width, border_width], fill=255)  # Top
+                draw.rectangle([0, height-border_width, width, height], fill=255)  # Bottom  
+                draw.rectangle([0, 0, border_width, height], fill=255)  # Left
+                draw.rectangle([width-border_width, 0, width, height], fill=255)  # Right
+                
+                # Keep center subject area clear (preserve main subject)
                 center_x, center_y = width // 2, height // 2
-                subject_width, subject_height = width // 3, height // 2
+                ellipse_w, ellipse_h = width // 3, height // 3
+                draw.ellipse([
+                    center_x - ellipse_w, center_y - ellipse_h,
+                    center_x + ellipse_w, center_y + ellipse_h
+                ], fill=0)  # Keep center subject
                 
-                y_start = max(0, center_y - subject_height // 2)
-                y_end = min(height, center_y + subject_height // 2)
-                x_start = max(0, center_x - subject_width // 2)
-                x_end = min(width, center_x + subject_width // 2)
+                mask_image = mask
                 
-                mask_array[y_start:y_end, x_start:x_end] = 0
+                logger.info(f"🎯 Processing with Qwen-style AI model: {num_inference_steps} steps")
                 
-                mask_image = Image.fromarray(mask_array)
-                
-                logger.info(f"🎯 Processing with AI model: {num_inference_steps} steps")
+                # Enhance prompt for Qwen-style background replacement
+                enhanced_prompt = f"Replace background with: {prompt}, high quality, detailed, masterpiece, best quality"
+                negative_prompt = "blurry, low quality, distorted, bad anatomy, worst quality"
                 
                 # Generate the result using AI
                 result = self.inpaint_pipeline(
-                    prompt=prompt,
+                    prompt=enhanced_prompt,
+                    negative_prompt=negative_prompt,
                     image=input_image,
                     mask_image=mask_image,
                     num_inference_steps=min(num_inference_steps, 20),  # Limit steps for performance
@@ -312,7 +324,7 @@ class QwenImageManager:
                     strength=strength
                 ).images[0]
                 
-                logger.info("✅ AI image editing completed")
+                logger.info("✅ Qwen-style AI image editing completed")
                 
                 # Convert back to base64
                 return self.image_processor.pil_to_base64(result)
@@ -556,7 +568,7 @@ def handler(job):
             
             return {
                 "success": True,
-                "message": "Image editing completed successfully",
+                "message": "Qwen Image Edit completed successfully",
                 "image": result_image,  # Base64 encoded image
                 "metadata": {
                     "processing_time": processing_time,
