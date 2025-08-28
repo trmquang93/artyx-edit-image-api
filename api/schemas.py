@@ -95,3 +95,37 @@ class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
+
+
+# Multipart upload schemas (used for form validation)
+class MultipartEditRequest(BaseModel):
+    """Request model for multipart image editing."""
+    
+    prompt: str = Field(..., min_length=1, max_length=2000, description="Edit instruction prompt")
+    negative_prompt: Optional[str] = Field(None, max_length=1000, description="Negative prompt")
+    num_inference_steps: int = Field(50, ge=10, le=100, description="Number of denoising steps")
+    guidance_scale: float = Field(4.0, ge=1.0, le=20.0, description="Guidance scale")
+    seed: Optional[int] = Field(None, ge=0, description="Random seed")
+    strength: float = Field(0.8, ge=0.1, le=1.0, description="Editing strength (0.1=subtle, 1.0=strong)")
+
+
+class MultipartBackgroundRequest(BaseModel):
+    """Request model for multipart background replacement."""
+    
+    prompt: str = Field(..., min_length=1, max_length=2000, description="Background description prompt")
+    negative_prompt: Optional[str] = Field(None, max_length=1000, description="Negative prompt")
+    num_inference_steps: int = Field(30, ge=10, le=100, description="Number of denoising steps")
+    guidance_scale: float = Field(7.5, ge=1.0, le=20.0, description="Guidance scale")
+    seed: Optional[int] = Field(None, ge=0, description="Random seed")
+    strength: float = Field(0.8, ge=0.1, le=1.0, description="Background replacement strength")
+
+
+class FileUploadResponse(BaseModel):
+    """Response model for successful file upload operations."""
+    
+    success: bool = Field(True, description="Always true for successful uploads")
+    image: str = Field(..., description="Base64 encoded result image")
+    message: str = Field(..., description="Success message")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Processing metadata")
+    processing_time: float = Field(..., description="Processing time in seconds")
+    file_info: Dict[str, Any] = Field(default_factory=dict, description="Original file information")
