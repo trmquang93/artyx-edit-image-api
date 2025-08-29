@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import os
+import shutil
 import sys
 import time
 from typing import Dict, Any
@@ -43,6 +44,31 @@ except ImportError as e:
 # Global model manager
 model_manager = None
 
+def check_disk_usage():
+    """Check disk usage for container and network volume."""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Check container disk usage
+        container_usage = shutil.disk_usage("/")
+        container_free_gb = container_usage.free / (1024**3)
+        container_total_gb = container_usage.total / (1024**3)
+        
+        logger.info(f"Container disk: {container_free_gb:.1f}GB free / {container_total_gb:.1f}GB total")
+        
+        # Check network volume usage if available
+        volume_path = "/runpod-volume"
+        if os.path.exists(volume_path):
+            volume_usage = shutil.disk_usage(volume_path)
+            volume_free_gb = volume_usage.free / (1024**3)
+            volume_total_gb = volume_usage.total / (1024**3)
+            logger.info(f"Network volume: {volume_free_gb:.1f}GB free / {volume_total_gb:.1f}GB total")
+        else:
+            logger.warning("Network volume not found at /runpod-volume")
+            
+    except Exception as e:
+        logger.error(f"Error checking disk usage: {e}")
+
 def initialize_model():
     """Initialize the model manager."""
     global model_manager
@@ -50,6 +76,24 @@ def initialize_model():
     if model_manager is None:
         setup_logging(level=os.getenv("LOG_LEVEL", "INFO"))
         logger = logging.getLogger(__name__)
+        
+        # Ensure cache directories exist on network volume
+        cache_dirs = [
+            os.getenv("HF_HOME", "/runpod-volume/.huggingface"),
+            os.getenv("TRANSFORMERS_CACHE", "/runpod-volume/.transformers"), 
+            os.getenv("TORCH_HOME", "/runpod-volume/.torch")
+        ]
+        
+        for cache_dir in cache_dirs:
+            try:
+                os.makedirs(cache_dir, exist_ok=True)
+                os.chmod(cache_dir, 0o777)  # Ensure write permissions
+                logger.info(f"Created cache directory: {cache_dir}")
+            except Exception as e:
+                logger.warning(f"Could not create cache directory {cache_dir}: {e}")
+        
+        # Check disk usage before model initialization
+        check_disk_usage()
         
         logger.info("Initializing Qwen-Image model manager...")
         model_manager = QwenImageManager()

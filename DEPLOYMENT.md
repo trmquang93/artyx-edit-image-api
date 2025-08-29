@@ -16,17 +16,27 @@ This repository contains a production-ready Qwen-Image AI editing server optimiz
    - **Container Disk**: 50GB
    - **Start Command**: `python runpod_worker.py`
 
-3. **Environment Variables**:
+3. **Environment Variables** (CRITICAL FOR DISK SPACE):
    ```
    RUNPOD_MODE=true
    LOG_LEVEL=INFO
-   TORCH_HOME=/tmp/.torch
-   HF_HOME=/tmp/.huggingface
-   TRANSFORMERS_CACHE=/tmp/.transformers
+   HF_HOME=/runpod-volume/.huggingface
+   TRANSFORMERS_CACHE=/runpod-volume/.transformers
+   TORCH_HOME=/runpod-volume/.torch
+   PORT=80
+   PORT_HEALTH=80
    ```
+   
+   **⚠️ IMPORTANT**: Use `/runpod-volume/` paths to store models on network volume instead of container disk. This prevents "No space left on device" errors.
 
-4. **Create Serverless Endpoint**:
+4. **Network Volume Setup** (Required):
+   - Create a Network Volume with 200GB capacity
+   - Attach the volume to your endpoint
+   - The volume will mount at `/runpod-volume/` automatically
+
+5. **Create Serverless Endpoint**:
    - Use the template you just created
+   - **Attach network volume** for model persistence
    - Configure scaling (0-3 workers recommended)
    - Enable FlashBoot for faster cold starts
 
