@@ -9,9 +9,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
-ENV TORCH_HOME=/tmp/.torch
-ENV HF_HOME=/tmp/.huggingface
-ENV TRANSFORMERS_CACHE=/tmp/.transformers
+ENV TORCH_HOME=/workspace/.torch
+ENV HF_HOME=/workspace/.huggingface
+ENV TRANSFORMERS_CACHE=/workspace/.transformers
 ENV PIP_NO_CACHE_DIR=1
 
 # Pre-configure timezone to prevent interactive prompts
@@ -47,9 +47,9 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 # Copy application code
 COPY . .
 
-# Create cache directories with proper permissions
-RUN mkdir -p /tmp/.torch /tmp/.huggingface /tmp/.transformers && \
-    chmod -R 777 /tmp/.torch /tmp/.huggingface /tmp/.transformers
+# Create cache directories with proper permissions on volume disk
+RUN mkdir -p /workspace/.torch /workspace/.huggingface /workspace/.transformers && \
+    chmod -R 777 /workspace/.torch /workspace/.huggingface /workspace/.transformers
 
 # Pre-download models (optional, for faster cold starts)
 RUN python -c "import torch; from diffusers import DiffusionPipeline, QwenImageEditPipeline; \
