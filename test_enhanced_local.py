@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Local test script for Flux-inspired handler implementation (without RunPod dependency).
+Local test script for enhanced handler implementation (without RunPod dependency).
 Tests core functionality that can be validated locally.
 """
 
@@ -52,7 +52,7 @@ def test_save_data_if_base64():
         sys.modules['runpod'] = runpod_mock
         
         # Now import our local handler
-        import handler_flux_inspired_local as handler_flux_inspired
+        import handler_enhanced_local as handler_enhanced
         
         # Test base64 detection and saving
         test_image_b64 = generate_test_base64_image()
@@ -64,7 +64,7 @@ def test_save_data_if_base64():
         temp_dir = tempfile.mkdtemp()
         
         # Test with base64 data
-        result_path = handler_flux_inspired.save_data_if_base64(
+        result_path = handler_enhanced.save_data_if_base64(
             test_image_b64, temp_dir, "test_image.png"
         )
         
@@ -79,7 +79,7 @@ def test_save_data_if_base64():
         
         # Test with data URL prefix
         data_url = f"data:image/png;base64,{test_image_b64}"
-        result_path2 = handler_flux_inspired.save_data_if_base64(
+        result_path2 = handler_enhanced.save_data_if_base64(
             data_url, temp_dir, "test_image2.png"
         )
         
@@ -93,7 +93,7 @@ def test_save_data_if_base64():
         
         # Test with regular path (should return unchanged)
         regular_path = "/regular/file/path.jpg"
-        result_path3 = handler_flux_inspired.save_data_if_base64(
+        result_path3 = handler_enhanced.save_data_if_base64(
             regular_path, temp_dir, "test_image3.png"
         )
         
@@ -130,10 +130,10 @@ def test_image_processor():
         sys.modules['runpod'] = runpod_mock
         
         # Import our local handler
-        import handler_flux_inspired_local as handler_flux_inspired
+        import handler_enhanced_local as handler_enhanced
         
         # Create ImageProcessor instance
-        processor = handler_flux_inspired.ImageProcessor()
+        processor = handler_enhanced.ImageProcessor()
         
         # Generate test image
         test_image_b64 = generate_test_base64_image()
@@ -177,10 +177,10 @@ def test_qwen_manager_init():
         sys.modules['runpod'] = runpod_mock
         
         # Import our local handler
-        import handler_flux_inspired_local as handler_flux_inspired
+        import handler_enhanced_local as handler_enhanced
         
         # Create QwenImageManager instance
-        manager = handler_flux_inspired.QwenImageManager()
+        manager = handler_enhanced.QwenImageManager()
         print("✅ QwenImageManager created successfully")
         
         # Test initialization (this will test dependency checking)
@@ -219,10 +219,10 @@ def test_cuda_check():
         sys.modules['runpod'] = runpod_mock
         
         # Import our local handler
-        import handler_flux_inspired_local as handler_flux_inspired
+        import handler_enhanced_local as handler_enhanced
         
         # Test CUDA check function
-        cuda_available = handler_flux_inspired.check_cuda_availability()
+        cuda_available = handler_enhanced.check_cuda_availability()
         print(f"✅ CUDA check completed")
         print(f"   CUDA available: {cuda_available}")
         
@@ -275,7 +275,7 @@ def test_basic_imports():
 
 def main():
     """Run local tests."""
-    print("🧪 Flux-Inspired Handler Local Test Suite")
+    print("🧪 Enhanced Handler Local Test Suite")
     print("==========================================")
     print("Testing functionality that doesn't require RunPod...")
     

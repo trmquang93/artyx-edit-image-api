@@ -1,5 +1,5 @@
-# Flux-inspired requirements for Qwen Image Editing Server
-# Based on proven dependencies from Flux-tontext implementation
+# Enhanced requirements for Qwen Image Editing Server
+# Based on proven production dependencies for reliability and performance
 
 # Core RunPod and web framework
 runpod>=1.6.0

@@ -1,4 +1,4 @@
-# Flux-Inspired Qwen Implementation Improvements
+# Enhanced Qwen Implementation Improvements
 
 ## Overview
 
@@ -8,7 +8,7 @@ Based on comprehensive analysis of the working Flux-tontext RunPod repository, I
 
 ### 1. Handler Architecture (Flux Pattern)
 
-**New File: `handler_flux_inspired.py`**
+**New File: `handler_enhanced.py`**
 - Single-file architecture like Flux (reduces complexity)
 - Embedded utilities to avoid import issues
 - Synchronous processing (no complex async/threading)
@@ -24,7 +24,7 @@ Based on comprehensive analysis of the working Flux-tontext RunPod repository, I
 
 ### 2. Infrastructure Improvements
 
-**New Dockerfile: `Dockerfile.flux_inspired`**
+**New Dockerfile: `Dockerfile.enhanced`**
 - Uses Flux's proven CUDA base: `nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04`
 - Comprehensive CUDA environment variables:
   - `FORCE_CUDA=1`
@@ -33,7 +33,7 @@ Based on comprehensive analysis of the working Flux-tontext RunPod repository, I
 - PyTorch 2.7.0+cu128 (matching Flux version)
 - Optimized build process with proper caching
 
-**New Entrypoint: `entrypoint_flux_inspired.sh`**
+**New Entrypoint: `entrypoint_enhanced.sh`**
 - Comprehensive CUDA validation (Python + nvidia-smi)
 - Service startup coordination with health checks
 - Proper error handling with exit codes
@@ -42,7 +42,7 @@ Based on comprehensive analysis of the working Flux-tontext RunPod repository, I
 
 ### 3. Dependency Management
 
-**Updated Requirements: `requirements_flux_inspired.txt`**
+**Updated Requirements: `requirements_enhanced.txt`**
 - PyTorch version aligned with Flux (2.7.0+cu128)
 - HuggingFace optimization with hf_transfer
 - WebSocket support for potential ComfyUI integration
@@ -71,7 +71,7 @@ def check_cuda_availability():
 **Flexible Input Processing:**
 ```python
 def save_data_if_base64(data_input, temp_dir, output_filename):
-    """Flux pattern: Base64 detection and file saving"""
+    """Enhanced pattern: Base64 detection and file saving"""
     if data_input.startswith('data:image/'):
         data_input = data_input.split(',', 1)[1]
     
@@ -87,8 +87,8 @@ def save_data_if_base64(data_input, temp_dir, output_filename):
 ### 5. Testing & Validation
 
 **Comprehensive Test Suite:**
-- `test_flux_inspired.py` - Full RunPod integration tests
-- `test_flux_local.py` - Local testing without RunPod dependency
+- `test_enhanced.py` - Full RunPod integration tests
+- `test_enhanced_local.py` - Local testing without RunPod dependency
 - `handler_flux_inspired_local.py` - Local development version
 
 **Test Results:**
@@ -103,7 +103,7 @@ def save_data_if_base64(data_input, temp_dir, output_filename):
 ## Comparison: Before vs After
 
 ### Architecture Simplification
-| Aspect | Original | Flux-Inspired |
+| Aspect | Original | Enhanced |
 |--------|----------|---------------|
 | Files | Multiple modules | Single handler file |
 | Async Handling | Complex threading | Direct synchronous |
@@ -112,7 +112,7 @@ def save_data_if_base64(data_input, temp_dir, output_filename):
 | CUDA Validation | Runtime only | Startup + runtime |
 
 ### Reliability Improvements
-| Feature | Original | Flux-Inspired |
+| Feature | Original | Enhanced |
 |---------|----------|---------------|
 | Startup Validation | Basic | Comprehensive |
 | Connection Retry | None | Exponential backoff |
@@ -121,7 +121,7 @@ def save_data_if_base64(data_input, temp_dir, output_filename):
 | Logging Detail | Minimal | Extensive debugging |
 
 ### Performance Benefits
-| Metric | Original | Flux-Inspired | Improvement |
+| Metric | Original | Enhanced | Improvement |
 |--------|----------|---------------|-------------|
 | Startup Time | Variable | Predictable | +Reliability |
 | Error Recovery | Poor | Excellent | +90% uptime |
@@ -132,21 +132,21 @@ def save_data_if_base64(data_input, temp_dir, output_filename):
 
 ### 1. Production Deployment (RunPod)
 ```bash
-# Use main Flux-inspired files
-docker build -f Dockerfile.flux_inspired -t artyx-flux .
+# Use main Enhanced files
+docker build -f Dockerfile.enhanced -t artyx-flux .
 ```
 
 ### 2. Local Development
 ```bash
 # Use local testing version
 python handler_flux_inspired_local.py
-python test_flux_local.py
+python test_enhanced_local.py
 ```
 
 ### 3. Testing & Validation
 ```bash
 # Comprehensive test suite
-python test_flux_inspired.py
+python test_enhanced.py
 ```
 
 ## Key Flux Patterns Adopted
@@ -175,18 +175,18 @@ python test_flux_inspired.py
 ## Migration Path
 
 ### Phase 1: Parallel Deployment
-- Deploy Flux-inspired version alongside current version
+- Deploy Enhanced version alongside current version
 - A/B test with gradual traffic migration
 - Monitor performance and error rates
 
 ### Phase 2: Full Migration
-- Replace current handler with Flux-inspired version
+- Replace current handler with Enhanced version
 - Update all deployment configurations
 - Update Firebase Functions integration
 
 ### Phase 3: Optimization
 - Fine-tune based on production metrics
-- Add additional Flux patterns as needed
+- Add additional Enhanced patterns as needed
 - Consider ComfyUI integration for advanced features
 
 ## Expected Benefits
@@ -214,4 +214,4 @@ python test_flux_inspired.py
 4. **Load testing** to validate improvements
 5. **Production migration** once validated
 
-This Flux-inspired implementation provides a robust, production-ready foundation for our Qwen image editing server with proven patterns for reliability and performance.
+This Enhanced implementation provides a robust, production-ready foundation for our Qwen image editing server with proven patterns for reliability and performance.

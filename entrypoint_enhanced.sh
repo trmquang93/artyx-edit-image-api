@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Flux-inspired entrypoint script for AI Image Editing Server
-# Based on proven patterns from Flux-tontext implementation
+# Enhanced entrypoint script for AI Image Editing Server
+# Based on proven production patterns for reliability and performance
 
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "🚀 Starting AI Image Editing Server (Flux-Inspired)"
+echo "🚀 Starting AI Image Editing Server (Enhanced)"
 echo "=================================================="
 
-# CUDA 검사 및 설정 (Flux pattern)
+# CUDA 검사 및 설정 (Enhanced pattern)
 echo "🔍 Checking CUDA availability..."
 
-# Python을 통한 CUDA 검사 (Flux pattern)
+# Python을 통한 CUDA 검사 (Enhanced pattern)
 python_cuda_check() {
     python3 -c "
 import torch
@@ -29,7 +29,7 @@ except Exception as e:
 " 2>/dev/null
 }
 
-# CUDA 검사 실행 (Flux pattern)
+# CUDA 검사 실행 (Enhanced pattern)
 cuda_status=$(python_cuda_check)
 case $? in
     0)
@@ -49,7 +49,7 @@ case $? in
         ;;
 esac
 
-# 추가적인 nvidia-smi 검사 (Flux pattern)
+# 추가적인 nvidia-smi 검사 (Enhanced pattern)
 if command -v nvidia-smi &> /dev/null; then
     if nvidia-smi &> /dev/null; then
         echo "✅ NVIDIA driver working (nvidia-smi check)"
@@ -137,11 +137,11 @@ echo "✅ Cache directories ready"
 echo "🔍 Validating handler module..."
 python3 -c "
 try:
-    import handler_flux_inspired
+    import handler_enhanced
     print('✅ Handler module imported successfully')
     
     # Test basic initialization
-    manager = handler_flux_inspired.QwenImageManager()
+    manager = handler_enhanced.QwenImageManager()
     print('✅ QwenImageManager created successfully')
     
 except Exception as e:
@@ -157,13 +157,13 @@ except Exception as e:
 # Health check before starting main service
 echo "🏥 Running health check..."
 python3 -c "
-import handler_flux_inspired
+import handler_enhanced
 import json
 
 try:
     # Test health endpoint
     test_job = {'input': {'task': 'health'}}
-    result = handler_flux_inspired.handler(test_job)
+    result = handler_enhanced.handler(test_job)
     
     if result.get('success'):
         print('✅ Health check passed')
@@ -208,4 +208,4 @@ echo "=================================================="
 
 # Start the handler in the foreground
 # This script becomes the main process for the container
-exec python /app/handler_flux_inspired.py
+exec python /app/handler_enhanced.py

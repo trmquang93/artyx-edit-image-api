@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Flux-inspired RunPod serverless handler for AI image editing using Qwen-Image models.
-Based on patterns from successful Flux-tontext implementation.
+Enhanced RunPod serverless handler for AI image editing using Qwen-Image models.
+Based on proven production patterns for reliability and performance.
 All dependencies embedded to avoid import issues.
 """
 
@@ -19,14 +19,14 @@ import binascii
 import concurrent.futures
 from typing import Optional
 
-# Set up logging with comprehensive format like Flux
+# Set up logging with comprehensive format
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# CUDA 검사 및 설정 (Flux pattern)
+# CUDA 검사 및 설정 (Enhanced pattern)
 def check_cuda_availability():
     """CUDA 사용 가능 여부를 확인하고 환경 변수를 설정합니다."""
     try:
@@ -54,7 +54,7 @@ except Exception as e:
 
 def save_data_if_base64(data_input, temp_dir, output_filename):
     """
-    Flux pattern: 입력 데이터가 Base64 문자열인지 확인하고, 맞다면 파일로 저장 후 경로를 반환합니다.
+    Enhanced pattern: 입력 데이터가 Base64 문자열인지 확인하고, 맞다면 파일로 저장 후 경로를 반환합니다.
     만약 일반 경로 문자열이라면 그대로 반환합니다.
     """
     # 입력값이 문자열이 아니면 그대로 반환
@@ -88,7 +88,7 @@ def save_data_if_base64(data_input, temp_dir, output_filename):
 
 
 class ImageProcessor:
-    """Simple image processing utilities - embedded in handler like Flux."""
+    """Simple image processing utilities - embedded in handler for reliability."""
     
     def __init__(self):
         self.max_size = 2048
@@ -141,7 +141,7 @@ class ImageProcessor:
 
 
 class QwenImageManager:
-    """Manages Qwen-Image models with Flux-inspired patterns."""
+    """Manages Qwen-Image models with enhanced production patterns."""
     
     def __init__(self):
         self.image_processor = ImageProcessor()
@@ -154,7 +154,7 @@ class QwenImageManager:
         self.image_edit_model = "runwayml/stable-diffusion-inpainting"
     
     def initialize(self):
-        """Initialize the model pipelines - synchronous like Flux."""
+        """Initialize the model pipelines - synchronous for reliability."""
         if self._initialized:
             return
             
@@ -261,7 +261,7 @@ class QwenImageManager:
                 logger.warning(f"AI generation failed: {ai_error}")
                 logger.info("🔄 Falling back to mock generation...")
                 
-                # Fallback: Create a simple placeholder image (Flux pattern)
+                # Fallback: Create a simple placeholder image (Enhanced pattern)
                 from PIL import Image, ImageDraw
                 
                 # Create a colorful gradient image
@@ -467,12 +467,12 @@ class QwenImageManager:
         return health
 
 
-# Global model manager - will be initialized once (Flux pattern)
+# Global model manager - will be initialized once (Enhanced pattern)
 model_manager = None
 
 
 def handler(job):
-    """RunPod serverless handler function - Flux-inspired structure."""
+    """RunPod serverless handler function - Enhanced production structure."""
     logger.info("=== JOB RECEIVED ===")
     logger.info(f"Job input: {job}")
     
@@ -483,7 +483,7 @@ def handler(job):
         if model_manager is None:
             logger.info("🚀 Initializing Qwen-Image model manager...")
             model_manager = QwenImageManager()
-            # Synchronous initialization like Flux
+            # Synchronous initialization for reliability
             model_manager.initialize()
             logger.info("✅ Model manager initialized successfully")
         
@@ -502,7 +502,7 @@ def handler(job):
                 "environment": {
                     "python_version": sys.version.split()[0],
                     "timestamp": time.time(),
-                    "server_type": "ai_image_editing_flux_inspired",
+                    "server_type": "ai_image_editing_enhanced",
                     "model_loaded": health_info.get("model_loaded", False),
                     "gpu_available": health_info.get("gpu_available", False)
                 }
@@ -555,10 +555,10 @@ def handler(job):
             strength = job_input.get("strength", 0.8)
             seed = job_input.get("seed")
             
-            # Generate unique task ID like Flux
+            # Generate unique task ID for tracking
             task_id = f"task_{uuid.uuid4()}"
             
-            # Handle image input - support multiple formats like Flux
+            # Handle image input - support multiple formats for flexibility
             image_input = image_base64 or image_url or image_path
             if not image_input:
                 return {
@@ -566,7 +566,7 @@ def handler(job):
                     "error": "No input image provided. Please provide 'image' (base64), 'image_url', or 'image_path'."
                 }
             
-            # Use Flux's save_data_if_base64 pattern
+            # Use enhanced save_data_if_base64 pattern
             if image_url and not image_base64:
                 try:
                     import requests
@@ -592,7 +592,7 @@ def handler(job):
                         "error": f"Failed to process image URL: {str(e)}"
                     }
             elif image_path and not image_base64:
-                # Use Flux's helper function for base64 detection
+                # Use enhanced helper function for base64 detection
                 processed_path = save_data_if_base64(image_path, task_id, "input_image.jpg")
                 
                 if processed_path != image_path:
@@ -639,7 +639,7 @@ def handler(job):
             return {
                 "success": True,
                 "message": "Image editing completed successfully",
-                "image": result_image,  # Base64 encoded image (Flux format)
+                "image": result_image,  # Base64 encoded image (Enhanced format)
                 "metadata": {
                     "processing_time": processing_time,
                     "model": "Qwen-Image-Edit/Stable-Diffusion-Inpaint",
@@ -652,7 +652,7 @@ def handler(job):
                 }
             }
         elif task_type == "debug":
-            # Debug endpoint like current implementation but with Flux logging
+            # Debug endpoint like current implementation but with enhanced logging
             import subprocess
             
             try:
@@ -664,7 +664,7 @@ def handler(job):
             
             return {
                 "success": True,
-                "handler_version": "flux_inspired_v1.0",
+                "handler_version": "enhanced_v1.0",
                 "python_version": sys.version,
                 "python_path": sys.executable,
                 "installed_packages": pip_list[:2000],  # Truncate to avoid huge response
@@ -688,13 +688,13 @@ def handler(job):
         return {
             "success": False,
             "error": f"Handler exception: {str(e)}",
-            "handler_version": "flux_inspired_v1.0"
+            "handler_version": "enhanced_v1.0"
         }
 
 
 def main():
-    """Main entry point for RunPod serverless worker - Flux pattern."""
-    logger.info("🚀 Starting AI Image Editing Server (Flux-Inspired)")
+    """Main entry point for RunPod serverless worker - Enhanced pattern."""
+    logger.info("🚀 Starting AI Image Editing Server (Enhanced)")
     logger.info(f"Python version: {sys.version}")
     
     try:
