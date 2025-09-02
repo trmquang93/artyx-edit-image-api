@@ -1,20 +1,46 @@
+# Enhanced requirements for Qwen Image Editing Server
+# Based on proven production dependencies for reliability and performance
+
+# Core RunPod and web framework
+runpod>=1.6.0
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
-git+https://github.com/huggingface/diffusers
-transformers>=4.51.3
-torch>=2.0.0
-torchvision>=0.15.0
-accelerate>=0.24.0
-Pillow>=10.0.0
 python-multipart>=0.0.6
-pydantic>=2.0.0
-numpy>=1.24.0
-runpod>=1.6.0
-python-jose[cryptography]>=3.3.0
 aiofiles>=23.0.0
-# Qwen2-VL specific dependencies
-qwen-vl-utils>=0.0.8
-# Image editing models
-controlnet-aux>=0.0.10
+requests>=2.31.0
+
+# PyTorch and CUDA (matching Flux version)
+# Note: torch==2.7.0+cu128 installed via Dockerfile for proper CUDA support
+# torch==2.7.0+cu128
+# torchvision
+# torchaudio
+# xformers
+# triton
+
+# ML and AI frameworks
+transformers>=4.51.3
+diffusers>=0.30.0
+accelerate>=0.24.0
+safetensors>=0.4.0
+
+# HuggingFace optimization (from Flux)
+huggingface_hub[hf_transfer]>=0.19.0
+
+# Image processing
+Pillow>=10.0.0
 opencv-python>=4.8.0
-xformers>=0.0.22
+numpy>=1.24.0
+
+# Qwen-specific dependencies
+qwen-vl-utils>=0.0.8
+
+# Additional ML utilities
+controlnet-aux>=0.0.10
+invisible-watermark>=0.2.0
+
+# Web and API utilities
+pydantic>=2.0.0
+python-jose[cryptography]>=3.3.0
+
+# WebSocket support (for potential ComfyUI integration like Flux)
+websocket-client>=1.6.0

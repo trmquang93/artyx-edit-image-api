@@ -41,7 +41,7 @@ def test_health_check():
     print("\n🏥 Testing Health Check...")
     
     try:
-        import handler_enhanced
+        import runpod_handler
         
         test_job = {
             "input": {
@@ -50,7 +50,7 @@ def test_health_check():
         }
         
         start_time = time.time()
-        result = handler_enhanced.handler(test_job)
+        result = runpod_handler.handler(test_job)
         execution_time = time.time() - start_time
         
         print(f"⏱️  Health check took: {execution_time:.3f}s")
@@ -76,7 +76,7 @@ def test_image_generation():
     print("\n🎨 Testing Image Generation...")
     
     try:
-        import handler_enhanced
+        import runpod_handler
         
         test_job = {
             "input": {
@@ -91,7 +91,7 @@ def test_image_generation():
         }
         
         start_time = time.time()
-        result = handler_enhanced.handler(test_job)
+        result = runpod_handler.handler(test_job)
         execution_time = time.time() - start_time
         
         print(f"⏱️  Generation took: {execution_time:.3f}s")
@@ -125,7 +125,7 @@ def test_image_editing():
         return False
     
     try:
-        import handler_enhanced
+        import runpod_handler
         
         test_job = {
             "input": {
@@ -140,7 +140,7 @@ def test_image_editing():
         }
         
         start_time = time.time()
-        result = handler_enhanced.handler(test_job)
+        result = runpod_handler.handler(test_job)
         execution_time = time.time() - start_time
         
         print(f"⏱️  Editing took: {execution_time:.3f}s")
@@ -168,7 +168,7 @@ def test_base64_handling():
     print("\n📥 Testing Base64 Handling...")
     
     try:
-        import handler_enhanced
+        import runpod_handler
         import tempfile
         import os
         
@@ -182,7 +182,7 @@ def test_base64_handling():
         temp_dir = tempfile.mkdtemp()
         
         # Test with base64 data
-        result_path = handler_enhanced.save_data_if_base64(
+        result_path = runpod_handler.save_data_if_base64(
             test_image_b64, temp_dir, "test_image.png"
         )
         
@@ -197,7 +197,7 @@ def test_base64_handling():
         
         # Test with regular path (should return unchanged)
         regular_path = "/regular/file/path.jpg"
-        result_path2 = handler_enhanced.save_data_if_base64(
+        result_path2 = runpod_handler.save_data_if_base64(
             regular_path, temp_dir, "test_image2.png"
         )
         
@@ -227,7 +227,7 @@ def test_debug_endpoint():
     print("\n🐛 Testing Debug Endpoint...")
     
     try:
-        import handler_enhanced
+        import runpod_handler
         
         test_job = {
             "input": {
@@ -236,7 +236,7 @@ def test_debug_endpoint():
         }
         
         start_time = time.time()
-        result = handler_enhanced.handler(test_job)
+        result = runpod_handler.handler(test_job)
         execution_time = time.time() - start_time
         
         print(f"⏱️  Debug took: {execution_time:.3f}s")
@@ -274,14 +274,14 @@ def run_performance_comparison():
         except ImportError:
             print("⚠️  Original handler not available for comparison")
         
-        import handler_enhanced
+        import runpod_handler
         
         # Test health check performance
         test_job = {"input": {"task": "health"}}
         
         # Test new handler
         start_time = time.time()
-        new_result = handler_enhanced.handler(test_job)
+        new_result = runpod_handler.handler(test_job)
         new_time = time.time() - start_time
         
         print(f"🆕 New handler health check: {new_time:.3f}s")

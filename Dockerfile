@@ -1,68 +1,95 @@
-# Optimized Dockerfile for Qwen-Image AI Editing Server
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+# Enhanced Dockerfile for Qwen-Image AI Editing Server
+# Based on proven production patterns for reliability and performance
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 as runtime
 
-# Set working directory
-WORKDIR /app
+# Remove any third-party apt sources to avoid issues with expiring keys (Enhanced pattern)
+RUN rm -f /etc/apt/sources.list.d/*.list
 
-# Set environment variables for non-interactive installation
+# Set shell and noninteractive environment variables (Enhanced pattern)
+SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=UTC
-ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV SHELL=/bin/bash
+
+# CUDA environment variables from Flux
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH="/usr/local/cuda/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+ENV HF_HUB_DISABLE_PROGRESS_BARS=1
+# CUDA environment variables - CPU fallback disabled like Flux
+ENV FORCE_CUDA=1
+ENV CUDA_VISIBLE_DEVICES=0
+
+# RunPod network volume paths for model caching
 ENV TORCH_HOME=/runpod-volume/.torch
 ENV HF_HOME=/runpod-volume/.huggingface
 ENV TRANSFORMERS_CACHE=/runpod-volume/.transformers
-ENV PIP_NO_CACHE_DIR=1
 
-# Pre-configure timezone to prevent interactive prompts
-RUN echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections && \
-    echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections
+# Set working directory
+WORKDIR /
 
-# Install system dependencies with non-interactive mode and clean up in one layer
-RUN apt-get update && apt-get install -y \
-    tzdata \
-    git \
-    curl \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean \
-    && apt-get autoremove -y
+# Update and upgrade the system packages (Enhanced pattern)
+RUN apt-get update --yes && \
+    apt-get upgrade --yes && \
+    apt install --yes --no-install-recommends git wget curl bash libgl1 software-properties-common openssh-server nginx rsync ffmpeg && \
+    apt-get install --yes --no-install-recommends build-essential libssl-dev libffi-dev libxml2-dev libxslt1-dev zlib1g-dev git-lfs && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt install python3.10-dev python3.10-venv -y --no-install-recommends && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Download and install pip (Enhanced pattern)
+RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
+    rm /usr/bin/python3 && \
+    ln -s /usr/bin/python3.10 /usr/bin/python3 && \
+    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+    python get-pip.py
 
-# Install dependencies in a single layer to reduce disk usage
-# Note: git+https urls in requirements.txt need git to be installed
+# Install base packages
+RUN pip install -U wheel setuptools packaging 
+RUN pip install -U "huggingface_hub[hf_transfer]"
+RUN pip install runpod websocket-client
+
+# Install PyTorch with CUDA support (matching Flux version)
+RUN pip install torch==2.7.0+cu128 torchvision torchaudio xformers triton --index-url https://download.pytorch.org/whl/cu128
+
+# Set PyTorch compilation flags like Flux
+ENV TORCH_CUDA_ARCH_LIST="8.9;9.0"
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt /app/requirements.txt
+WORKDIR /app
+
+# Install Python dependencies in optimized order
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir \
         accelerate \
         safetensors \
-        invisible-watermark && \
+        invisible-watermark \
+        requests \
+        pillow && \
     pip cache purge && \
-    find /opt/conda -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find /usr/local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Copy application code
 COPY . .
 
-# Create cache directories on network volume (will be created at runtime if not exist)
-# Note: RunPod network volume mounts at /runpod-volume/
-
+# Create directories on network volume (will be created at runtime if not exist)
 # Models will be downloaded to network volume on first use
-# This saves container disk space and persists models between runs
 
-# Expose port
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
+# Expose port for health checks
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+    CMD python -c "import runpod_handler; print('Health check passed')" || exit 1
 
-# Default command - RunPod worker with enhanced error handling
-CMD ["python", "runpod_worker.py"]
-
-# Alternative commands:
-# CMD ["python", "startup_debug.py"]     # Debug startup
-# CMD ["python", "main.py"]              # FastAPI server
+# Use enhanced entrypoint
+CMD ["/app/entrypoint.sh"]
