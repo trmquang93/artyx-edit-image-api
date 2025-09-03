@@ -149,9 +149,9 @@ class QwenImageManager:
         self.torch_dtype = None
         self._initialized = False
         
-        # Model configurations
-        self.text_to_image_model = "runwayml/stable-diffusion-v1-5"
-        self.image_edit_model = "runwayml/stable-diffusion-inpainting"
+        # Model configurations - Pure Qwen models only
+        self.text_to_image_model = "Qwen/Qwen-Image"
+        self.image_edit_model = "Qwen/Qwen-Image-Edit"
     
     def initialize(self):
         """Initialize the model pipelines - synchronous for reliability."""
@@ -207,100 +207,63 @@ class QwenImageManager:
         guidance_scale: float = 4.0,
         seed: Optional[int] = None
     ) -> str:
-        """Generate image from text prompt using real Qwen-Image model."""
+        """Generate image from text prompt using Qwen-Image model only."""
         if not self._initialized:
             self.initialize()
         
         try:
             logger.info(f"🎨 Generating {width}x{height} image with Qwen-Image: '{prompt}'")
             
-            # Try to use real Qwen-Image model
-            try:
-                from diffusers import DiffusionPipeline
-                import torch
-                
-                # Load Qwen-Image model if not already loaded
-                if not hasattr(self, 'qwen_text_pipeline'):
-                    logger.info("🔄 Loading Qwen-Image text-to-image model...")
-                    # Use stable diffusion as fallback since Qwen-Image might not be available
+            from diffusers import DiffusionPipeline
+            import torch
+            
+            # Load Qwen-Image model if not already loaded
+            if not hasattr(self, 'qwen_text_pipeline'):
+                logger.info("🔄 Loading Qwen-Image text-to-image model...")
+                try:
                     self.qwen_text_pipeline = DiffusionPipeline.from_pretrained(
-                        "runwayml/stable-diffusion-v1-5",
-                        torch_dtype=self.torch_dtype
+                        self.text_to_image_model,  # "Qwen/Qwen-Image"
+                        torch_dtype=self.torch_dtype,
+                        trust_remote_code=True
                     )
                     
                     if torch.cuda.is_available():
                         self.qwen_text_pipeline = self.qwen_text_pipeline.to("cuda")
-                        logger.info("✅ Image generation model loaded on GPU")
+                        logger.info("✅ Qwen-Image model loaded on GPU")
                     else:
-                        logger.info("⚠️ Image generation model loaded on CPU (slower)")
-                
-                # Set seed for reproducibility
-                generator = torch.manual_seed(seed) if seed is not None else None
-                
-                # Generate with model
-                logger.info(f"🎯 Processing with generation model: {num_inference_steps} steps")
-                logger.info(f"📝 Prompt: '{prompt}' ({len(prompt)} chars)")
-                
-                with torch.inference_mode():
-                    result = self.qwen_text_pipeline(
-                        prompt=prompt,
-                        negative_prompt=negative_prompt,
-                        width=width,
-                        height=height,
-                        num_inference_steps=num_inference_steps,
-                        guidance_scale=guidance_scale,
-                        generator=generator
-                    ).images[0]
-                
-                logger.info("✅ Real AI generation completed")
-                
-                # Convert to base64
-                return self.image_processor.pil_to_base64(result)
-                
-            except Exception as ai_error:
-                logger.warning(f"AI generation failed: {ai_error}")
-                logger.info("🔄 Falling back to mock generation...")
-                
-                # Fallback: Create a simple placeholder image (Enhanced pattern)
-                from PIL import Image, ImageDraw
-                
-                # Create a colorful gradient image
-                image = Image.new('RGB', (width, height), color='skyblue')
-                draw = ImageDraw.Draw(image)
-                
-                # Add gradient effect
-                for y in range(height):
-                    color_val = int(255 * (y / height))
-                    for x in range(width):
-                        r = min(255, color_val)
-                        g = max(0, 255 - color_val)
-                        b = 255
-                        draw.point((x, y), fill=(r, g, b))
-                
-                # Add text overlay
-                try:
-                    text_lines = [f"Generated: {prompt}"[:40]]
-                    if len(prompt) > 40:
-                        text_lines.append(f"{prompt[40:80]}...")
-                    
-                    y_offset = 20
-                    for line in text_lines:
-                        draw.text((20, y_offset), line, fill="white")
-                        y_offset += 25
+                        logger.info("⚠️ Qwen-Image model loaded on CPU (slower)")
                         
-                    draw.text((20, height - 60), f"Size: {width}x{height}", fill="white")
-                    draw.text((20, height - 40), f"Steps: {num_inference_steps}", fill="white")
-                    draw.text((20, height - 20), f"Guidance: {guidance_scale}", fill="white")
                 except Exception as e:
-                    logger.warning(f"Could not add text overlay: {e}")
-                
-                logger.info("✅ Fallback generation completed")
-                return self.image_processor.pil_to_base64(image)
+                    logger.error(f"❌ Failed to load Qwen-Image model: {e}")
+                    raise RuntimeError(f"Qwen-Image model '{self.text_to_image_model}' could not be loaded: {str(e)}")
+            
+            # Set seed for reproducibility
+            generator = torch.manual_seed(seed) if seed is not None else None
+            
+            # Generate with Qwen model
+            logger.info(f"🎯 Processing with Qwen-Image: {num_inference_steps} steps")
+            logger.info(f"📝 Prompt: '{prompt}' ({len(prompt)} chars)")
+            
+            with torch.inference_mode():
+                result = self.qwen_text_pipeline(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    width=width,
+                    height=height,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    generator=generator
+                ).images[0]
+            
+            logger.info("✅ Qwen-Image generation completed")
+            
+            # Convert to base64
+            return self.image_processor.pil_to_base64(result)
             
         except Exception as e:
-            logger.error(f"Image generation failed: {e}")
+            logger.error(f"Qwen-Image generation failed: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
-            raise
+            raise RuntimeError(f"Qwen-Image generation failed: {str(e)}")
     
     def edit_image(
         self,
@@ -312,130 +275,66 @@ class QwenImageManager:
         strength: float = 0.8,
         seed: Optional[int] = None
     ) -> str:
-        """Edit image using AI models for real background replacement."""
+        """Edit image using Qwen-Image-Edit model only."""
         if not self._initialized:
             self.initialize()
         
         try:
-            logger.info(f"🎨 AI editing image with prompt: '{prompt}'")
+            logger.info(f"🎨 Editing image with Qwen-Image-Edit: '{prompt}'")
             
             # Decode input image to verify it's valid
             input_image = self.image_processor.base64_to_pil(image_base64)
             logger.info(f"✅ Input image decoded successfully: {input_image.size}")
             
-            # Try to use actual image editing model
-            try:
-                from diffusers import StableDiffusionInpaintPipeline
-                import torch
-                
-                # Load image editing model if not already loaded
-                if not hasattr(self, 'edit_pipeline'):
-                    logger.info("🔄 Loading image editing model...")
-                    self.edit_pipeline = StableDiffusionInpaintPipeline.from_pretrained(
-                        "runwayml/stable-diffusion-inpainting",
-                        torch_dtype=self.torch_dtype
+            from diffusers import DiffusionPipeline
+            import torch
+            
+            # Load Qwen-Image-Edit model if not already loaded
+            if not hasattr(self, 'edit_pipeline'):
+                logger.info("🔄 Loading Qwen-Image-Edit model...")
+                try:
+                    self.edit_pipeline = DiffusionPipeline.from_pretrained(
+                        self.image_edit_model,  # "Qwen/Qwen-Image-Edit"
+                        torch_dtype=self.torch_dtype,
+                        trust_remote_code=True
                     )
                     
                     if torch.cuda.is_available():
                         self.edit_pipeline = self.edit_pipeline.to("cuda")
-                        logger.info("✅ Image editing model loaded on GPU")
+                        logger.info("✅ Qwen-Image-Edit model loaded on GPU")
                     else:
-                        logger.info("⚠️ Image editing model loaded on CPU (slower)")
-                
-                # Create a background-focused mask for editing
-                from PIL import Image, ImageDraw
-                import numpy as np
-                
-                width, height = input_image.size
-                
-                # Create a mask that focuses on background replacement
-                mask = Image.new('L', (width, height), 255)  # White mask = areas to edit
-                draw = ImageDraw.Draw(mask)
-                
-                # Create center oval mask for subject (black = preserve)
-                margin_x = width // 4
-                margin_y = height // 4
-                draw.ellipse([margin_x, margin_y, width-margin_x, height-margin_y], fill=0)
-                
-                # Use client prompt exactly as provided
-                enhanced_prompt = prompt
-                negative_prompt = negative_prompt or "blurry, low quality, distorted"
-                
-                # Generate the result using image editing model
-                actual_steps = min(max(num_inference_steps, 20), 50)  # Optimized range
-                
-                logger.info(f"🎯 Processing with image editing model: {actual_steps} steps")
-                logger.info(f"📝 Prompt: '{enhanced_prompt}' ({len(enhanced_prompt)} chars)")
-                
-                with torch.inference_mode():
-                    result = self.edit_pipeline(
-                        image=input_image,
-                        mask_image=mask,
-                        prompt=enhanced_prompt,
-                        negative_prompt=negative_prompt,
-                        num_inference_steps=actual_steps,
-                        guidance_scale=guidance_scale,
-                        strength=strength,
-                        generator=torch.manual_seed(seed) if seed else None
-                    ).images[0]
-                
-                logger.info(f"⚙️ Used steps={actual_steps}, guidance_scale={guidance_scale}, strength={strength}")
-                logger.info("✅ Real AI image editing completed")
-                
-                # Convert back to base64
-                return self.image_processor.pil_to_base64(result)
-                
-            except Exception as ai_error:
-                logger.warning(f"AI processing failed: {ai_error}")
-                logger.info("🔄 Falling back to enhanced image processing...")
-                
-                # Fallback: Create a more sophisticated mock that still transforms the image
-                from PIL import Image, ImageEnhance, ImageFilter
-                
-                # Apply various transformations to make image look different
-                edited_image = input_image.copy()
-                
-                # Apply color enhancement based on prompt
-                if any(word in prompt.lower() for word in ["sunset", "warm", "orange", "red"]):
-                    # Add warm tone
-                    enhancer = ImageEnhance.Color(edited_image)
-                    edited_image = enhancer.enhance(1.3)
-                    
-                    enhancer = ImageEnhance.Brightness(edited_image)
-                    edited_image = enhancer.enhance(1.1)
-                    
-                elif any(word in prompt.lower() for word in ["forest", "green", "nature"]):
-                    # Add green tint
-                    enhancer = ImageEnhance.Color(edited_image)
-                    edited_image = enhancer.enhance(1.2)
-                    
-                elif any(word in prompt.lower() for word in ["beach", "blue", "ocean", "sky"]):
-                    # Add cool tone
-                    enhancer = ImageEnhance.Contrast(edited_image)
-                    edited_image = enhancer.enhance(1.1)
-                
-                # Apply slight blur to background area (simulate depth of field)
-                mask = Image.new('L', edited_image.size, 0)
-                draw = ImageDraw.Draw(mask)
-                
-                # Create oval mask for subject
-                width, height = edited_image.size
-                margin = min(width, height) // 4
-                draw.ellipse([margin, margin, width-margin, height-margin], fill=255)
-                
-                # Blur background
-                blurred = edited_image.filter(ImageFilter.GaussianBlur(radius=3))
-                edited_image = Image.composite(edited_image, blurred, mask)
-                
-                logger.info("✅ Enhanced image processing completed")
-                
-                # Convert back to base64
-                return self.image_processor.pil_to_base64(edited_image)
+                        logger.info("⚠️ Qwen-Image-Edit model loaded on CPU (slower)")
+                        
+                except Exception as e:
+                    logger.error(f"❌ Failed to load Qwen-Image-Edit model: {e}")
+                    raise RuntimeError(f"Qwen-Image-Edit model '{self.image_edit_model}' could not be loaded: {str(e)}")
+            
+            # Set seed for reproducibility
+            generator = torch.manual_seed(seed) if seed is not None else None
+            
+            logger.info(f"🎯 Processing with Qwen-Image-Edit: {num_inference_steps} steps")
+            logger.info(f"📝 Edit instruction: '{prompt}' ({len(prompt)} chars)")
+            
+            with torch.inference_mode():
+                result = self.edit_pipeline(
+                    prompt=prompt,
+                    image=input_image,
+                    negative_prompt=negative_prompt,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    strength=strength,
+                    generator=generator
+                ).images[0]
+            
+            logger.info("✅ Qwen-Image-Edit processing completed")
+            
+            # Convert back to base64
+            return self.image_processor.pil_to_base64(result)
             
         except Exception as e:
-            logger.error(f"Image editing failed: {e}")
+            logger.error(f"Qwen-Image-Edit processing failed: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
-            raise
+            raise RuntimeError(f"Qwen-Image-Edit processing failed: {str(e)}")
     
     def get_health_info(self):
         """Get health information about the model manager."""
@@ -535,7 +434,7 @@ def handler(job):
                 "image": result_image,  # Base64 encoded image
                 "metadata": {
                     "processing_time": processing_time,
-                    "model": "Qwen-Image/Stable-Diffusion",
+                    "model": "Qwen/Qwen-Image",
                     "prompt": prompt,
                     "dimensions": f"{width}x{height}",
                     "steps": num_inference_steps,
@@ -642,7 +541,7 @@ def handler(job):
                 "image": result_image,  # Base64 encoded image (Enhanced format)
                 "metadata": {
                     "processing_time": processing_time,
-                    "model": "Qwen-Image-Edit/Stable-Diffusion-Inpaint",
+                    "model": "Qwen/Qwen-Image-Edit",
                     "prompt": prompt,
                     "steps": num_inference_steps,
                     "guidance_scale": guidance_scale,

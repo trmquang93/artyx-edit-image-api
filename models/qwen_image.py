@@ -35,9 +35,9 @@ class QwenImageManager:
         self._lock = threading.Lock()
         self._initialized = False
         
-        # Model configurations - using Qwen models for image editing
-        self.text_to_image_model = "runwayml/stable-diffusion-v1-5"  # Fallback for text-to-image
-        self.image_edit_model = "runwayml/stable-diffusion-inpainting"  # Compatible inpainting model
+        # Model configurations - Pure Qwen models only
+        self.text_to_image_model = "Qwen/Qwen-Image"
+        self.image_edit_model = "Qwen/Qwen-Image-Edit"
         
         # Magic prompts for enhanced quality
         self.positive_magic = {
@@ -72,23 +72,19 @@ class QwenImageManager:
             logger.info("Qwen-Image models initialized successfully")
     
     async def _initialize_text_to_image(self):
-        """Initialize the text-to-image pipeline."""
+        """Initialize the Qwen-Image text-to-image pipeline."""
         try:
-            logger.info(f"Loading text-to-image model: {self.text_to_image_model}")
+            logger.info(f"Loading Qwen text-to-image model: {self.text_to_image_model}")
             
-            from diffusers import StableDiffusionPipeline
-            
-            self.text_to_image_pipeline = StableDiffusionPipeline.from_pretrained(
-                self.text_to_image_model,
+            self.text_to_image_pipeline = DiffusionPipeline.from_pretrained(
+                self.text_to_image_model,  # "Qwen/Qwen-Image"
                 torch_dtype=self.torch_dtype,
-                use_safetensors=True,
-                safety_checker=None,
-                requires_safety_checker=False
+                trust_remote_code=True
             )
             
             self.text_to_image_pipeline = self.text_to_image_pipeline.to(self.device)
             
-            # Enable memory efficient attention if available
+            # Enable memory optimizations
             if hasattr(self.text_to_image_pipeline, 'enable_attention_slicing'):
                 self.text_to_image_pipeline.enable_attention_slicing()
             
@@ -98,27 +94,21 @@ class QwenImageManager:
                 except Exception as e:
                     logger.warning(f"Could not enable xformers: {e}")
             
-            logger.info("Text-to-image pipeline loaded successfully")
+            logger.info("Qwen text-to-image pipeline loaded successfully")
             
         except Exception as e:
-            logger.error(f"Failed to initialize text-to-image pipeline: {e}")
-            logger.warning("Continuing without text-to-image capability")
-            self.text_to_image_pipeline = None
+            logger.error(f"Failed to initialize Qwen text-to-image pipeline: {e}")
+            raise RuntimeError(f"Qwen-Image model could not be loaded: {str(e)}")
     
     async def _initialize_image_edit(self):
-        """Initialize the image editing pipeline."""
+        """Initialize the Qwen-Image-Edit pipeline."""
         try:
-            logger.info(f"Loading image editing model: {self.image_edit_model}")
+            logger.info(f"Loading Qwen image editing model: {self.image_edit_model}")
             
-            # Use Stable Diffusion Inpainting pipeline
-            from diffusers import StableDiffusionInpaintPipeline
-            
-            self.image_edit_pipeline = StableDiffusionInpaintPipeline.from_pretrained(
-                self.image_edit_model,
+            self.image_edit_pipeline = DiffusionPipeline.from_pretrained(
+                self.image_edit_model,  # "Qwen/Qwen-Image-Edit"
                 torch_dtype=self.torch_dtype,
-                use_safetensors=True,
-                safety_checker=None,
-                requires_safety_checker=False
+                trust_remote_code=True
             )
             
             self.image_edit_pipeline = self.image_edit_pipeline.to(self.device)
@@ -131,14 +121,13 @@ class QwenImageManager:
                 try:
                     self.image_edit_pipeline.enable_xformers_memory_efficient_attention()
                 except Exception as e:
-                    logger.warning(f"Could not enable xformers for inpainting: {e}")
+                    logger.warning(f"Could not enable xformers for Qwen editing: {e}")
             
-            logger.info("Image editing pipeline loaded successfully")
+            logger.info("Qwen image editing pipeline loaded successfully")
             
         except Exception as e:
-            logger.error(f"Failed to initialize image editing pipeline: {e}")
-            logger.warning("Continuing without image editing capability")
-            self.image_edit_pipeline = None
+            logger.error(f"Failed to initialize Qwen image editing pipeline: {e}")
+            raise RuntimeError(f"Qwen-Image-Edit model could not be loaded: {str(e)}")
     
     async def generate_image(
         self,
